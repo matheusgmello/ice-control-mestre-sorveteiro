@@ -1,9 +1,11 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/Layout";
+import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Caixa from "@/pages/Caixa";
 import Produtos from "@/pages/Produtos";
@@ -22,20 +24,68 @@ const queryClient = new QueryClient({
   },
 });
 
-function Router() {
+function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f2e6d8] flex items-center justify-center">
+        <div className="text-[#8a5a2b] text-sm animate-pulse">Carregando...</div>
+      </div>
+    );
+  }
+  if (!isAuthenticated) return <Redirect to="/login" />;
   return (
     <Layout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/caixa" component={Caixa} />
-        <Route path="/produtos" component={Produtos} />
-        <Route path="/estoque" component={Estoque} />
-        <Route path="/fiados" component={Fiados} />
-        <Route path="/relatorios" component={Relatorios} />
-        <Route path="/configuracoes" component={Configuracoes} />
-        <Route component={NotFound} />
-      </Switch>
+      <Component />
     </Layout>
+  );
+}
+
+function Router() {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f2e6d8] flex items-center justify-center">
+        <div className="text-[#8a5a2b] text-sm animate-pulse">Carregando...</div>
+      </div>
+    );
+  }
+
+  return (
+    <Switch>
+      <Route path="/login">
+        {isAuthenticated ? <Redirect to="/" /> : <Login />}
+      </Route>
+      <Route path="/">
+        <ProtectedRoute component={Dashboard} />
+      </Route>
+      <Route path="/caixa">
+        <ProtectedRoute component={Caixa} />
+      </Route>
+      <Route path="/produtos">
+        <ProtectedRoute component={Produtos} />
+      </Route>
+      <Route path="/estoque">
+        <ProtectedRoute component={Estoque} />
+      </Route>
+      <Route path="/fiados">
+        <ProtectedRoute component={Fiados} />
+      </Route>
+      <Route path="/relatorios">
+        <ProtectedRoute component={Relatorios} />
+      </Route>
+      <Route path="/configuracoes">
+        <ProtectedRoute component={Configuracoes} />
+      </Route>
+      <Route>
+        {isAuthenticated ? (
+          <Layout><NotFound /></Layout>
+        ) : (
+          <Redirect to="/login" />
+        )}
+      </Route>
+    </Switch>
   );
 }
 
@@ -43,9 +93,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
+        <AuthProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <Router />
+          </WouterRouter>
+        </AuthProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

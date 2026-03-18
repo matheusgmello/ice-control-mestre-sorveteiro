@@ -36,7 +36,17 @@ Full-stack ice cream shop management system (sorveteria) built from scratch. Bra
 4. **Estoque** — Stock movements (entrada/saída) for products and ice cream scoops (bolas)
 5. **Fiados** — Customer credit accounts, payment history, partial payments
 6. **Relatórios** — Sales reports, best sellers (products & flavors), payment breakdown
-7. **Configurações** — Monthly goal setting
+7. **Configurações** — Monthly goal setting, admin user management (max 2)
+
+## Authentication
+
+- JWT-based (stored in localStorage, Authorization: Bearer header)
+- `POST /api/auth/login` — Email + password, returns JWT (7 days)
+- `POST /api/auth/register` — Create admin (max 2 total)
+- `GET /api/auth/me` — Validate token
+- `GET /api/auth/usuarios` — List admins (protected)
+- `DELETE /api/auth/usuarios/:id` — Deactivate admin (protected)
+- Frontend: AuthContext + protected routes with wouter redirect
 
 ## Database Schema
 

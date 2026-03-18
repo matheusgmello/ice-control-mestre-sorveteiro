@@ -7,3 +7,4 @@ export * from "./vendas";
 export * from "./fiados";
 export * from "./estoque";
 export * from "./metas";
+export * from "./usuarios";

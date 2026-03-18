@@ -9,9 +9,11 @@ import fiadosRouter from "./fiados";
 import dashboardRouter from "./dashboard";
 import relatoriosRouter from "./relatorios";
 import metasRouter from "./metas";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
+router.use(authRouter);
 router.use(healthRouter);
 router.use(produtosRouter);
 router.use(tiposSorveteRouter);

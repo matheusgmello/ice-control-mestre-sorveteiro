@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LayoutProps {
   children: ReactNode;
@@ -20,6 +21,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
+  const { usuario, logout } = useAuth();
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -30,6 +32,10 @@ export function Layout({ children }: LayoutProps) {
     { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
     { href: "/configuracoes", label: "Configurações", icon: Settings },
   ];
+
+  const iniciais = usuario?.nome
+    ? usuario.nome.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+    : "??";
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
@@ -64,14 +70,18 @@ export function Layout({ children }: LayoutProps) {
         <div className="p-4 border-t border-sidebar-border">
           <div className="flex items-center space-x-3 px-3 py-2 bg-black/10 rounded-xl mb-2">
             <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-xs">
-              AD
+              {iniciais}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">Admin</p>
-              <p className="text-xs text-sidebar-foreground/60 truncate">Gerente</p>
+              <p className="text-sm font-medium text-sidebar-foreground truncate">{usuario?.nome ?? "—"}</p>
+              <p className="text-xs text-sidebar-foreground/60 truncate capitalize">{usuario?.role ?? "admin"}</p>
             </div>
           </div>
-          <Button variant="ghost" className="w-full justify-start text-sidebar-foreground/70 hover:bg-white/5 hover:text-white">
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-sidebar-foreground/70 hover:bg-white/5 hover:text-white"
+            onClick={logout}
+          >
             <LogOut className="w-4 h-4 mr-2" /> Sair
           </Button>
         </div>
@@ -86,6 +96,9 @@ export function Layout({ children }: LayoutProps) {
             </Button>
             <h1 className="font-display font-bold text-xl text-primary">IceControl</h1>
           </div>
+          <Button variant="ghost" size="icon" onClick={logout} title="Sair">
+            <LogOut className="h-5 w-5" />
+          </Button>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 relative">

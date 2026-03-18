@@ -3,7 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Save, Target, CheckCircle2 } from "lucide-react";
+import { Save, Target, CheckCircle2, UserPlus, Users, Trash2, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -32,19 +34,45 @@ async function salvarMeta(valor: number) {
   return res.json();
 }
 
+function useUsuarios() {
+  const { token } = useAuth();
+  return useQuery({
+    queryKey: ["usuarios"],
+    queryFn: async () => {
+      const res = await fetch(`${BASE}/api/auth/usuarios`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Erro ao buscar usuários");
+      return res.json() as Promise<{ usuarios: any[]; total: number; limite: number }>;
+    },
+    enabled: !!token,
+  });
+}
+
 export default function Configuracoes() {
   const queryClient = useQueryClient();
+  const { token, usuario: usuarioAtual } = useAuth();
+
   const [valorMeta, setValorMeta] = useState<string>("");
   const [salvo, setSalvo] = useState(false);
 
-  const { data: meta, isLoading } = useQuery({ queryKey: ["meta-mensal"], queryFn: fetchMeta });
+  const [dialogAberto, setDialogAberto] = useState(false);
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [erroCadastro, setErroCadastro] = useState("");
+  const [salvandoCadastro, setSalvandoCadastro] = useState(false);
+
+  const { data: meta, isLoading: loadingMeta } = useQuery({ queryKey: ["meta-mensal"], queryFn: fetchMeta });
+  const { data: dadosUsuarios, isLoading: loadingUsuarios } = useUsuarios();
 
   useEffect(() => {
     if (meta) setValorMeta(String(meta.valor));
-    else if (!isLoading) setValorMeta("5000");
-  }, [meta, isLoading]);
+    else if (!loadingMeta) setValorMeta("5000");
+  }, [meta, loadingMeta]);
 
-  const mutation = useMutation({
+  const mutationMeta = useMutation({
     mutationFn: () => salvarMeta(Number(valorMeta)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["meta-mensal"] });
@@ -53,6 +81,40 @@ export default function Configuracoes() {
       setTimeout(() => setSalvo(false), 2500);
     },
   });
+
+  const handleCadastrar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErroCadastro("");
+    if (senha.length < 6) { setErroCadastro("Senha deve ter ao menos 6 caracteres"); return; }
+    setSalvandoCadastro(true);
+    try {
+      const res = await fetch(`${BASE}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ nome, email, senha }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Erro ao cadastrar");
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      setDialogAberto(false);
+      setNome(""); setEmail(""); setSenha("");
+    } catch (err: any) {
+      setErroCadastro(err.message);
+    } finally {
+      setSalvandoCadastro(false);
+    }
+  };
+
+  const handleRemover = async (id: number) => {
+    if (!confirm("Remover este administrador?")) return;
+    await fetch(`${BASE}/api/auth/usuarios/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+  };
+
+  const podeAdicionarMais = dadosUsuarios ? dadosUsuarios.total < dadosUsuarios.limite : true;
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -71,7 +133,7 @@ export default function Configuracoes() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isLoading ? (
+          {loadingMeta ? (
             <p className="text-muted-foreground text-sm">Carregando...</p>
           ) : (
             <div className="flex gap-4 items-end">
@@ -88,13 +150,13 @@ export default function Configuracoes() {
               </div>
               <Button
                 className="w-36 h-11"
-                onClick={() => mutation.mutate()}
-                disabled={mutation.isPending || !valorMeta}
+                onClick={() => mutationMeta.mutate()}
+                disabled={mutationMeta.isPending || !valorMeta}
               >
                 {salvo ? (
                   <><CheckCircle2 className="w-4 h-4 mr-2" /> Salvo!</>
                 ) : (
-                  <><Save className="w-4 h-4 mr-2" /> {mutation.isPending ? "Salvando..." : "Salvar"}</>
+                  <><Save className="w-4 h-4 mr-2" /> {mutationMeta.isPending ? "Salvando..." : "Salvar"}</>
                 )}
               </Button>
             </div>
@@ -106,6 +168,125 @@ export default function Configuracoes() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center">
+                <Users className="w-5 h-5 mr-2 text-secondary" /> Administradores
+              </CardTitle>
+              <CardDescription>
+                Gerencie os usuários com acesso ao sistema. Máximo de {dadosUsuarios?.limite ?? 2} administradores.
+              </CardDescription>
+            </div>
+            {podeAdicionarMais && (
+              <Button onClick={() => { setDialogAberto(true); setErroCadastro(""); }} size="sm">
+                <UserPlus className="w-4 h-4 mr-2" /> Novo Admin
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingUsuarios ? (
+            <p className="text-muted-foreground text-sm">Carregando...</p>
+          ) : dadosUsuarios?.usuarios.length === 0 ? (
+            <p className="text-muted-foreground text-sm">Nenhum administrador cadastrado.</p>
+          ) : (
+            <div className="space-y-3">
+              {dadosUsuarios?.usuarios.map((u: any) => (
+                <div key={u.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border">
+                  <div className="w-9 h-9 rounded-full bg-secondary/20 flex items-center justify-center text-secondary font-bold text-sm">
+                    {u.nome.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-sm text-foreground truncate">{u.nome}</p>
+                      {u.id === usuarioAtual?.id && (
+                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">você</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 text-xs text-secondary font-medium">
+                      <ShieldCheck className="w-3.5 h-3.5" /> Admin
+                    </span>
+                    {u.id !== usuarioAtual?.id && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
+                        onClick={() => handleRemover(u.id)}
+                        title="Remover"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {!podeAdicionarMais && (
+            <p className="text-xs text-muted-foreground mt-3">
+              Limite de {dadosUsuarios?.limite} administradores atingido. Remova um para adicionar outro.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-secondary" /> Novo Administrador
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCadastrar} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground">Nome completo</label>
+              <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: João Silva" required />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground">Email</label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="joao@email.com" required />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground">Senha</label>
+              <div className="relative">
+                <Input
+                  type={mostrarSenha ? "text" : "password"}
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setMostrarSenha(!mostrarSenha)}
+                >
+                  {mostrarSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            {erroCadastro && (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 text-sm">
+                {erroCadastro}
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogAberto(false)}>Cancelar</Button>
+              <Button type="submit" disabled={salvandoCadastro}>
+                <UserPlus className="w-4 h-4 mr-2" />
+                {salvandoCadastro ? "Cadastrando..." : "Cadastrar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
