@@ -73,13 +73,34 @@ router.post("/vendas", async (req, res) => {
     if (!itens || !itens.length) return res.status(400).json({ error: "Itens são obrigatórios" });
     if (!pagamentos || !pagamentos.length) return res.status(400).json({ error: "Pagamentos são obrigatórios" });
 
-    const subtotal = itens.reduce((sum: number, item: any) => sum + item.precoUnitario * item.quantidade, 0);
+    // Normalize payment field: support both 'forma' and 'metodo'
+    const pagamentosNorm = pagamentos.map((p: any) => ({ ...p, forma: p.forma ?? p.metodo }));
+
+    // Pre-fill missing prices from DB (before transaction for total calculation)
+    for (const item of itens) {
+      if (item.produtoId && !item.precoUnitario) {
+        const [p] = await db.select({ preco: produtosTable.preco, nome: produtosTable.nome }).from(produtosTable).where(eq(produtosTable.id, item.produtoId));
+        if (p) {
+          item.precoUnitario = Number(p.preco);
+          if (!item.produtoNome) item.produtoNome = p.nome;
+        }
+      }
+      if (item.tipo === "sorvete" && item.tipoSorveteId && !item.precoUnitario) {
+        const [tipo] = await db.select({ preco: tiposSorveteTable.preco, nome: tiposSorveteTable.nome }).from(tiposSorveteTable).where(eq(tiposSorveteTable.id, item.tipoSorveteId));
+        if (tipo) {
+          item.precoUnitario = Number(tipo.preco);
+          if (!item.tipoSorveteNome) item.tipoSorveteNome = tipo.nome;
+        }
+      }
+    }
+
+    const subtotal = itens.reduce((sum: number, item: any) => sum + (Number(item.precoUnitario) || 0) * item.quantidade, 0);
     const total = Math.max(0, subtotal - Number(desconto) + Number(acrescimo));
-    const valorPago = pagamentos.reduce((sum: number, p: any) => sum + Number(p.valor), 0);
-    const dinheiro = pagamentos.find((p: any) => p.forma === "dinheiro");
+    const valorPago = pagamentosNorm.reduce((sum: number, p: any) => sum + Number(p.valor), 0);
+    const dinheiro = pagamentosNorm.find((p: any) => p.forma === "dinheiro");
     const troco = dinheiro ? Math.max(0, Number(dinheiro.valor) - total) : 0;
-    const formasPagamento = [...new Set(pagamentos.map((p: any) => p.forma))].join(", ");
-    const hasFiado = pagamentos.some((p: any) => p.forma === "fiado");
+    const formasPagamento = [...new Set(pagamentosNorm.map((p: any) => p.forma))].join(", ");
+    const hasFiado = pagamentosNorm.some((p: any) => p.forma === "fiado");
 
     await db.transaction(async (tx) => {
       // Validate and deduct stock
@@ -133,9 +154,13 @@ router.post("/vendas", async (req, res) => {
       // Insert items
       for (const item of itens) {
         let prodNome = item.produtoNome || "Produto";
-        if (!item.produtoNome && item.produtoId) {
-          const [p] = await tx.select({ nome: produtosTable.nome }).from(produtosTable).where(eq(produtosTable.id, item.produtoId));
-          if (p) prodNome = p.nome;
+        // Resolve product name and price from DB if not provided
+        if (item.produtoId && (!item.produtoNome || !item.precoUnitario)) {
+          const [p] = await tx.select({ nome: produtosTable.nome, preco: produtosTable.preco }).from(produtosTable).where(eq(produtosTable.id, item.produtoId));
+          if (p) {
+            if (!item.produtoNome) { prodNome = p.nome; item.produtoNome = p.nome; }
+            if (!item.precoUnitario) item.precoUnitario = Number(p.preco);
+          }
         }
         if (item.tipo === "sorvete" && item.tipoSorveteId) {
           const [tipo] = await tx.select({ nome: tiposSorveteTable.nome }).from(tiposSorveteTable).where(eq(tiposSorveteTable.id, item.tipoSorveteId));
@@ -185,13 +210,13 @@ router.post("/vendas", async (req, res) => {
       }
 
       // Insert pagamentos
-      for (const pag of pagamentos) {
+      for (const pag of pagamentosNorm) {
         await tx.insert(pagamentosVendaTable).values({ vendaId: venda.id, forma: pag.forma, valor: String(pag.valor) });
       }
 
       // Create fiado if needed
       if (hasFiado && clienteId) {
-        const fiadoValor = pagamentos.filter((p: any) => p.forma === "fiado").reduce((s: number, p: any) => s + Number(p.valor), 0);
+        const fiadoValor = pagamentosNorm.filter((p: any) => p.forma === "fiado").reduce((s: number, p: any) => s + Number(p.valor), 0);
         const [fiado] = await tx.insert(fiadosTable).values({
           clienteId,
           total: String(fiadoValor.toFixed(2)),

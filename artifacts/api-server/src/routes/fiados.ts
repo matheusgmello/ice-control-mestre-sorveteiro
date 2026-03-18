@@ -82,7 +82,7 @@ router.get("/fiados/:id", async (req, res) => {
   }
 });
 
-router.post("/fiados/:id/pagamento", async (req, res) => {
+async function handlePagamentoFiado(req: any, res: any) {
   try {
     const fiadoId = Number(req.params.id);
     const { valor, formaPagamento, observacoes } = req.body;
@@ -146,6 +146,9 @@ router.post("/fiados/:id/pagamento", async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Erro ao registrar pagamento" });
   }
-});
+}
+
+router.post("/fiados/:id/pagamento", handlePagamentoFiado);
+router.post("/fiados/:id/pagamentos", handlePagamentoFiado);
 
 export default router;
