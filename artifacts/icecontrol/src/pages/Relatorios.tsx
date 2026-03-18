@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { format, startOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Calendar, TrendingUp, Package, IceCream } from "lucide-react";
+import { Calendar, TrendingUp, Package, IceCream, FileDown, Loader2 } from "lucide-react";
 
 const COLORS = [
   "hsl(var(--primary))",
@@ -17,10 +18,203 @@ const COLORS = [
   "hsl(var(--chart-5))",
 ];
 
+const COLORS_HEX = ["#5a3a1b", "#8a5a2b", "#b07d50", "#d4a96a", "#e8c99a"];
+
+function fmtPDF(val: number) {
+  return `R$ ${val.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+async function gerarPDF(params: {
+  filtro: { dataInicio: string; dataFim: string };
+  vendas: any;
+  produtos: any[];
+  sabores: any[];
+}) {
+  const { default: jsPDF } = await import("jspdf");
+  const { default: autoTable } = await import("jspdf-autotable");
+
+  const { filtro, vendas, produtos, sabores } = params;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  const BROWN = [90, 58, 27] as [number, number, number];
+  const BROWN_LIGHT = [138, 90, 43] as [number, number, number];
+  const CREAM = [242, 230, 216] as [number, number, number];
+  const WHITE: [number, number, number] = [255, 255, 255];
+  const GRAY = [100, 100, 100] as [number, number, number];
+
+  const pageW = 210;
+  const margin = 14;
+
+  // ── Header ──────────────────────────────────────────
+  doc.setFillColor(...BROWN);
+  doc.rect(0, 0, pageW, 34, "F");
+
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...WHITE);
+  doc.text("IceControl v2.0", margin, 14);
+
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text("Relatório de Vendas", margin, 22);
+
+  const dataInicioFmt = format(new Date(filtro.dataInicio + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR });
+  const dataFimFmt = format(new Date(filtro.dataFim + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR });
+  const geradoEm = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+
+  doc.setFontSize(9);
+  doc.setTextColor(220, 190, 160);
+  doc.text(`Período: ${dataInicioFmt} – ${dataFimFmt}`, margin, 30);
+  doc.text(`Gerado em: ${geradoEm}`, pageW - margin, 30, { align: "right" });
+
+  let y = 44;
+
+  // ── KPIs ──────────────────────────────────────────
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...BROWN);
+  doc.text("Resumo do Período", margin, y);
+  y += 6;
+
+  const kpis = [
+    { label: "Faturamento Bruto", value: fmtPDF(vendas.total), highlight: true },
+    { label: "Total de Vendas", value: `${vendas.totalVendas} pedidos`, highlight: false },
+    { label: "Ticket Médio", value: fmtPDF(vendas.ticketMedio), highlight: false },
+    { label: "Descontos Concedidos", value: fmtPDF(vendas.totalDesconto), highlight: false },
+  ];
+
+  const cardW = (pageW - margin * 2 - 12) / 4;
+  kpis.forEach((kpi, i) => {
+    const x = margin + i * (cardW + 4);
+    if (kpi.highlight) {
+      doc.setFillColor(...BROWN);
+      doc.roundedRect(x, y, cardW, 22, 2, 2, "F");
+      doc.setTextColor(...WHITE);
+    } else {
+      doc.setFillColor(...CREAM);
+      doc.roundedRect(x, y, cardW, 22, 2, 2, "F");
+      doc.setTextColor(...BROWN);
+    }
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text(kpi.label, x + cardW / 2, y + 7, { align: "center" });
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text(kpi.value, x + cardW / 2, y + 16, { align: "center" });
+  });
+  y += 30;
+
+  // ── Formas de Pagamento ──────────────────────────────
+  if (vendas.formasPagamento && vendas.formasPagamento.length > 0) {
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...BROWN);
+    doc.text("Formas de Pagamento", margin, y);
+    y += 4;
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [["Forma de Pagamento", "Transações", "Total"]],
+      body: vendas.formasPagamento.map((fp: any, i: number) => [
+        fp.forma.replace("_", " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        fp.quantidade,
+        fmtPDF(fp.total),
+      ]),
+      headStyles: { fillColor: BROWN, textColor: WHITE, fontStyle: "bold", fontSize: 9 },
+      bodyStyles: { fontSize: 9, textColor: [40, 40, 40] },
+      alternateRowStyles: { fillColor: CREAM },
+      columnStyles: {
+        0: { cellWidth: "auto" },
+        1: { cellWidth: 30, halign: "center" },
+        2: { cellWidth: 40, halign: "right" },
+      },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
+  // ── Produtos Mais Vendidos ─────────────────────────
+  if (produtos && produtos.length > 0) {
+    if (y > 230) { doc.addPage(); y = 20; }
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...BROWN);
+    doc.text("Produtos Mais Vendidos", margin, y);
+    y += 4;
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [["#", "Produto", "Qtd Vendida", "Total Faturado"]],
+      body: produtos.map((p: any, i: number) => [
+        `#${i + 1}`,
+        p.nome,
+        `${p.quantidade} un`,
+        fmtPDF(p.totalFaturado),
+      ]),
+      headStyles: { fillColor: BROWN_LIGHT, textColor: WHITE, fontStyle: "bold", fontSize: 9 },
+      bodyStyles: { fontSize: 9, textColor: [40, 40, 40] },
+      alternateRowStyles: { fillColor: CREAM },
+      columnStyles: {
+        0: { cellWidth: 10, halign: "center" },
+        1: { cellWidth: "auto" },
+        2: { cellWidth: 30, halign: "center" },
+        3: { cellWidth: 40, halign: "right" },
+      },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
+  // ── Sabores Mais Pedidos ───────────────────────────
+  if (sabores && sabores.length > 0) {
+    if (y > 230) { doc.addPage(); y = 20; }
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...BROWN);
+    doc.text("Sabores Mais Pedidos", margin, y);
+    y += 4;
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [["#", "Sabor", "Pedidos"]],
+      body: sabores.slice(0, 15).map((s: any, i: number) => [
+        `#${i + 1}`,
+        s.nome,
+        `${s.quantidade} pedidos`,
+      ]),
+      headStyles: { fillColor: BROWN_LIGHT, textColor: WHITE, fontStyle: "bold", fontSize: 9 },
+      bodyStyles: { fontSize: 9, textColor: [40, 40, 40] },
+      alternateRowStyles: { fillColor: CREAM },
+      columnStyles: {
+        0: { cellWidth: 10, halign: "center" },
+        1: { cellWidth: "auto" },
+        2: { cellWidth: 40, halign: "center" },
+      },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
+  // ── Rodapé ────────────────────────────────────────
+  const pageCount = (doc as any).internal.pages.length - 1;
+  for (let pg = 1; pg <= pageCount; pg++) {
+    doc.setPage(pg);
+    doc.setFontSize(8);
+    doc.setTextColor(...GRAY);
+    doc.setFont("helvetica", "normal");
+    doc.text(`IceControl v2.0 — Relatório gerado em ${geradoEm}`, margin, 290);
+    doc.text(`Página ${pg} de ${pageCount}`, pageW - margin, 290, { align: "right" });
+  }
+
+  const nomeArquivo = `relatorio-icecontrol-${filtro.dataInicio}-${filtro.dataFim}.pdf`;
+  doc.save(nomeArquivo);
+}
+
 export default function Relatorios() {
   const [dataInicio, setDataInicio] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
   const [dataFim, setDataFim] = useState(format(new Date(), "yyyy-MM-dd"));
   const [filtroAtivo, setFiltroAtivo] = useState({ dataInicio: format(startOfMonth(new Date()), "yyyy-MM-dd"), dataFim: format(new Date(), "yyyy-MM-dd") });
+  const [gerandoPDF, setGerandoPDF] = useState(false);
 
   const { data: vendas, isLoading: loadingVendas } = useAppRelatorioVendas(filtroAtivo);
   const { data: produtosRanking, isLoading: loadingProd } = useAppRelatorioProdutos({ ...filtroAtivo, limit: 10 });
@@ -30,7 +224,23 @@ export default function Relatorios() {
     setFiltroAtivo({ dataInicio, dataFim });
   }
 
+  async function handleGerarPDF() {
+    if (!vendas) return;
+    setGerandoPDF(true);
+    try {
+      await gerarPDF({
+        filtro: filtroAtivo,
+        vendas,
+        produtos: produtosRanking ?? [],
+        sabores: saboresRanking ?? [],
+      });
+    } finally {
+      setGerandoPDF(false);
+    }
+  }
+
   const isLoading = loadingVendas || loadingProd || loadingSab;
+  const temDados = !!vendas;
 
   return (
     <div className="space-y-6">
@@ -39,6 +249,19 @@ export default function Relatorios() {
           <h2 className="text-3xl font-display font-bold text-primary">Relatórios</h2>
           <p className="text-muted-foreground mt-1">Análise de vendas e faturamento.</p>
         </div>
+        {temDados && (
+          <Button
+            onClick={handleGerarPDF}
+            disabled={gerandoPDF || isLoading}
+            className="gap-2 bg-primary hover:bg-primary/90"
+          >
+            {gerandoPDF ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Gerando PDF...</>
+            ) : (
+              <><FileDown className="w-4 h-4" /> Exportar PDF</>
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Filter Bar */}
@@ -141,7 +364,7 @@ export default function Relatorios() {
                         nameKey="forma"
                         stroke="none"
                       >
-                        {vendas.formasPagamento.map((_, index) => (
+                        {vendas.formasPagamento.map((_: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -162,7 +385,7 @@ export default function Relatorios() {
                   <p className="text-muted-foreground text-sm">Nenhum pagamento no período.</p>
                 ) : (
                   <div className="space-y-4">
-                    {vendas.formasPagamento.map((fp, i) => (
+                    {vendas.formasPagamento.map((fp: any, i: number) => (
                       <div
                         key={fp.forma}
                         className="flex justify-between items-center border-b pb-4 last:border-0 last:pb-0"
