@@ -1,0 +1,19 @@
+packages:
+  "recharts": "Data visualization for Dashboard and Reports"
+  "date-fns": "Date formatting and manipulation"
+  "framer-motion": "Animations for the POS wizard and UI transitions"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility for efficiently merging Tailwind CSS classes"
+  "lucide-react": "Beautiful consistent icons"
+
+images:
+  - path: "artifacts/icecontrol/public/images/logo.png"
+    description: "Minimal modern logo for an ice cream shop named 'IceControl', warm chocolate and cream tones, vector illustration, transparent background"
+    aspect_ratio: "1:1"
+  - path: "artifacts/icecontrol/public/images/hero-bg.png"
+    description: "Subtle abstract gradient background in warm beige, cream, and soft brown tones, professional and clean"
+    aspect_ratio: "16:9"
+
+notes:
+  - Using generated Orval hooks from @workspace/api-client-react
+  - React Query invalidation is wrapped in local hooks

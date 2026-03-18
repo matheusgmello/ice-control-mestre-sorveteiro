@@ -1,0 +1,740 @@
+# Prompt de Inicialização: Projeto IceControl v2.0
+
+**Objetivo:** Refazer do zero o sistema de gestão "IceControl" para uma sorveteria física. O sistema deve ser desenvolvido para rodar em ambiente **Windows (Notebook)**, com foco em agilidade de operação (PDV) e precisão de estoque fracionado.
+
+**Importante:** Ignore indicações de "já implementado" no levantamento abaixo, pois o sistema será reconstruído em uma nova stack (Modern Web ou Desktop).
+
+---
+
+## 🎨 1. Identidade Visual (UI/UX)
+O sistema deve seguir rigorosamente a paleta de cores "Chocolate e Creme":
+
+* **Cores Principais:**
+    * **Marrom Escuro (Primária):** `#5a3a1b` (Header, botões principais e títulos).
+    * **Bege Claro (Fundo):** `#f2e6d8` (Background geral do sistema).
+    * **Marrom "Café" (Textos):** `#3a2414` (Textos principais e estados de hover).
+    * **Creme Suave (Cards/Tabelas):** `#fcf7f2` (Fundo de tabelas e áreas de destaque).
+* **Acento e Detalhes:**
+    * **Marrom Médio (Secundária):** `#8a5a2b` (Botões secundários e foco de campos).
+    * **Bege Pastel:** `#f8efe6` (Botões de seleção de tipos/bases de sorvete).
+    * **Bordas/Divisores:** `#ead8c7` ou `#d8c1a9`.
+* **Status:**
+    * **Sucesso:** `#0f7a2f` (Fundo: `#e8f8ed`).
+    * **Erro/Remover:** `#b42318` (Fundo: `#fdecec`).
+
+---
+
+## 🖥️ 2. Telas do Sistema (Módulos)
+
+### 2.1. Caixa (PDV)
+* **Foco:** Agilidade via teclado e leitor de barras.
+* **Venda Simples:** Autocomplete de produtos (SKU/Nome), validação imediata de estoque.
+* **Montagem de Sorvete:** Fluxo dinâmico (Escolha da Base -> Sabores limitados pela base -> Adicionais grátis/pagos -> Cobertura).
+* **Carrinho:** Permitir editar sorvetes já montados, duplicar itens e limpar com 1 clique.
+* **Pagamento:** Suporte a múltiplas formas de pagamento no mesmo cupom e cálculo de troco.
+
+### 2.2. Produtos
+* **Cadastro:** Gestão de Produtos (Bebidas/Picolés) e Sabores (Bolas).
+* **Campos:** SKU obrigatório, preço de custo, preço de venda, categoria e subcategoria.
+* **Interface:** Lista com edição rápida na tabela e filtros por categoria.
+
+### 2.3. Estoque
+* **Controle Híbrido:** Unidades (un) para produtos e Bolas para sabores.
+* **Movimentações:** Registro de entrada (com valor de nota para custo médio) e saídas manuais (perda/brinde).
+* **Regra de Baixa:** Venda de sorvete deve baixar automaticamente: o sabor, a base (copo/casquinha) e insumos (leite/canudo em milk-shakes).
+
+### 2.4. Fiados (Gestão de Crédito)
+* **Clientes:** Cadastro completo com busca inteligente para evitar duplicidade.
+* **Contas:** Listagem de saldos em aberto, histórico de compras e pagamentos parciais.
+* **Documentação:** Gerar extrato detalhado da conta em PDF profissional com logo.
+
+### 2.5. Relatórios
+* **Vendas:** Filtros por período (dia/mês/custom), faturamento total e ticket médio.
+* **Performance:** Ranking de produtos e sabores mais vendidos (por quantidade e por valor).
+* **Financeiro:** Relatório de descontos concedidos e fechamento por forma de pagamento.
+
+### 2.6. Dashboard
+* **Visão Geral:** Gráfico de vendas diárias/mensais e metas do mês.
+* **Alertas Críticos:** Sabores com estoque abaixo de 20 bolas e produtos abaixo do mínimo.
+* **Indicadores:** Total vendido hoje e saldo total de fiados na rua.
+
+---
+
+## ⚙️ 3. Requisitos Técnicos e Regras de Negócio
+1.  **Transacionalidade:** Uso obrigatório de Transactions SQL. Se o abate no estoque falhar, a venda não deve ser registrada (Rollback).
+2.  **Cancelamento:** Módulo para cancelar vendas com motivo obrigatório e estorno automático de todos os insumos ao estoque.
+3.  **Normalização de Dados:** Diferente do banco antigo, os sabores de um sorvete vendido devem ser salvos em uma tabela de detalhes, permitindo histórico real para o ranking.
+4.  **Impressão:** Ocupar layout de 80mm para impressoras térmicas Windows.
+
+---
+
+## 🛠️ Instrução para a IA
+1. Analise o SQL legado fornecido abaixo para entender as entidades e dados existentes.
+2. Proponha a nova estrutura de banco de dados (v2) normalizada.
+3. Defina a stack tecnológica e crie o esqueleto do projeto com a paleta de cores definida.
+4. Implemente primeiro o fluxo de **Venda no PDV** com a lógica de montagem de sorvete.
+
+---
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Banco de dados: `icecontrol`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `adicionais`
+--
+
+CREATE TABLE `adicionais` (
+  `id` int(11) NOT NULL,
+  `nome` varchar(100) DEFAULT NULL,
+  `tipo` varchar(50) DEFAULT NULL,
+  `estoque` int(11) DEFAULT 0,
+  `preco_extra` decimal(10,2) DEFAULT 1.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Despejando dados para a tabela `adicionais`
+--
+
+INSERT INTO `adicionais` (`id`, `nome`, `tipo`, `estoque`, `preco_extra`) VALUES
+(1, 'Chocolate', 'cobertura', 0, 1.00),
+(2, 'Morango', 'cobertura', 0, 1.00),
+(3, 'Caramelo', 'cobertura', 0, 1.00),
+(4, 'Leite Condensado', 'cobertura', 0, 1.00),
+(9, 'Canudo de baunilha', 'adicional', 0, 1.00),
+(10, 'Canudo de chocolate', 'adicional', 0, 1.00),
+(11, 'Chocoball', 'adicional', 0, 1.00),
+(12, 'Chocolate em flocos', 'adicional', 0, 1.00),
+(13, 'M&M', 'adicional', 0, 1.00),
+(14, 'Ovomaltine', 'adicional', 0, 1.00);
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `clientes`
+--
+
+CREATE TABLE `clientes` (
+  `id` int(11) NOT NULL,
+  `nome` varchar(120) NOT NULL,
+  `telefone` varchar(30) DEFAULT NULL,
+  `endereco` varchar(255) DEFAULT NULL,
+  `observacoes` text DEFAULT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Despejando dados para a tabela `clientes`
+--
+
+INSERT INTO `clientes` (`id`, `nome`, `telefone`, `endereco`, `observacoes`, `ativo`, `created_at`, `updated_at`) VALUES
+(1, 'Eder', NULL, NULL, 'Cliente inicial do sistema', 1, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(2, 'Edgar', NULL, NULL, 'Cliente inicial do sistema', 1, '2026-03-08 04:39:56', '2026-03-08 04:39:56');
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `fiados`
+--
+
+CREATE TABLE `fiados` (
+  `id` int(11) NOT NULL,
+  `cliente_id` int(11) NOT NULL,
+  `total` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `valor_pago` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `saldo` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `status` varchar(20) NOT NULL DEFAULT 'ABERTO',
+  `observacoes` text DEFAULT NULL,
+  `data` datetime NOT NULL DEFAULT current_timestamp(),
+  `data_pagamento` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `fiado_itens`
+--
+
+CREATE TABLE `fiado_itens` (
+  `id` int(11) NOT NULL,
+  `fiado_id` int(11) NOT NULL,
+  `produto_id` int(11) DEFAULT NULL,
+  `produto` varchar(150) NOT NULL,
+  `quantidade` int(11) NOT NULL DEFAULT 1,
+  `preco` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `subtotal` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `itens_sorvete`
+--
+
+CREATE TABLE `itens_sorvete` (
+  `id` int(11) NOT NULL,
+  `venda_id` int(11) DEFAULT NULL,
+  `tipo_sorvete_id` int(11) DEFAULT NULL,
+  `bola1_id` int(11) DEFAULT NULL,
+  `bola2_id` int(11) DEFAULT NULL,
+  `bola_extra_id` int(11) DEFAULT NULL,
+  `cobertura_id` int(11) DEFAULT NULL,
+  `adicional_id` int(11) DEFAULT NULL,
+  `extra_adicional` int(11) DEFAULT 0,
+  `preco` decimal(10,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `itens_venda`
+--
+
+CREATE TABLE `itens_venda` (
+  `id` int(11) NOT NULL,
+  `venda_id` int(11) NOT NULL,
+  `produto_id` int(11) NOT NULL,
+  `produto_nome` varchar(150) NOT NULL,
+  `quantidade` int(11) NOT NULL DEFAULT 1,
+  `preco_unitario` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `subtotal` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `metas`
+--
+
+CREATE TABLE `metas` (
+  `id` int(11) NOT NULL,
+  `mes` varchar(7) NOT NULL,
+  `valor` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `observacoes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Despejando dados para a tabela `metas`
+--
+
+INSERT INTO `metas` (`id`, `mes`, `valor`, `observacoes`, `created_at`, `updated_at`) VALUES
+(1, '2026-03', 5000.00, 'Meta inicial do mês atual', '2026-03-08 04:39:56', '2026-03-08 04:39:56');
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `movimentacoes_estoque`
+--
+
+CREATE TABLE `movimentacoes_estoque` (
+  `id` int(11) NOT NULL,
+  `produto_id` int(11) NOT NULL,
+  `tipo` varchar(20) NOT NULL,
+  `quantidade` int(11) NOT NULL,
+  `estoque_antes` int(11) NOT NULL DEFAULT 0,
+  `estoque_depois` int(11) NOT NULL DEFAULT 0,
+  `motivo` varchar(100) DEFAULT NULL,
+  `observacoes` text DEFAULT NULL,
+  `data_movimentacao` datetime NOT NULL DEFAULT current_timestamp(),
+  `preco_custo` decimal(10,2) DEFAULT NULL,
+  `valor_total_nota` decimal(10,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `pagamentos_fiado`
+--
+
+CREATE TABLE `pagamentos_fiado` (
+  `id` int(11) NOT NULL,
+  `fiado_id` int(11) NOT NULL,
+  `valor` decimal(10,2) NOT NULL,
+  `forma_pagamento` varchar(30) NOT NULL DEFAULT 'Dinheiro',
+  `observacoes` text DEFAULT NULL,
+  `data_pagamento` datetime NOT NULL DEFAULT current_timestamp(),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `produtos`
+--
+
+CREATE TABLE `produtos` (
+  `id` int(11) NOT NULL,
+  `sku` varchar(30) DEFAULT NULL,
+  `nome` varchar(150) NOT NULL,
+  `categoria` varchar(50) NOT NULL,
+  `subcategoria` varchar(50) DEFAULT NULL,
+  `unidade_medida` varchar(20) NOT NULL DEFAULT 'un',
+  `preco` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `preco_custo` decimal(10,2) DEFAULT NULL,
+  `estoque` int(11) NOT NULL DEFAULT 0,
+  `estoque_minimo` int(11) NOT NULL DEFAULT 5,
+  `ativo` tinyint(1) NOT NULL DEFAULT 1,
+  `observacoes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Despejando dados para a tabela `produtos`
+--
+
+INSERT INTO `produtos` (`id`, `sku`, `nome`, `categoria`, `subcategoria`, `unidade_medida`, `preco`, `preco_custo`, `estoque`, `estoque_minimo`, `ativo`, `observacoes`, `created_at`, `updated_at`) VALUES
+(1, 'PIC-CRE-001', 'Picolé Leite Condensado', 'Picolé', 'Cremoso', 'un', 3.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(2, 'PIC-CRE-002', 'Picolé Coco', 'Picolé', 'Cremoso', 'un', 3.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(3, 'PIC-CRE-003', 'Picolé Morango', 'Picolé', 'Cremoso', 'un', 3.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(4, 'PIC-CRE-004', 'Picolé Maracujá', 'Picolé', 'Cremoso', 'un', 3.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(5, 'PIC-CRE-005', 'Picolé Creme', 'Picolé', 'Cremoso', 'un', 3.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(6, 'PIC-CRE-006', 'Picolé Doce de Leite', 'Picolé', 'Cremoso', 'un', 3.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(7, 'PIC-CRE-007', 'Picolé Nata', 'Picolé', 'Cremoso', 'un', 3.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(8, 'PIC-CRE-008', 'Picolé Chocolate', 'Picolé', 'Cremoso', 'un', 3.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(9, 'PIC-CRE-009', 'Picolé Milho Verde', 'Picolé', 'Cremoso', 'un', 3.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(10, 'PIC-FRU-001', 'Picolé Uva', 'Picolé', 'Fruta', 'un', 2.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(11, 'PIC-FRU-002', 'Picolé Açaí', 'Picolé', 'Fruta', 'un', 2.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(12, 'PIC-FRU-003', 'Picolé Limão', 'Picolé', 'Fruta', 'un', 2.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(13, 'PIC-FRU-004', 'Picolé Tangerina', 'Picolé', 'Fruta', 'un', 2.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(14, 'PIC-FRU-005', 'Picolé Melancia', 'Picolé', 'Fruta', 'un', 2.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(15, 'PIC-FRU-006', 'Picolé Groselha', 'Picolé', 'Fruta', 'un', 2.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(16, 'PIC-FRU-007', 'Picolé Abacaxi', 'Picolé', 'Fruta', 'un', 2.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(17, 'PIC-CRO-001', 'Picolé Skimo', 'Picolé', 'Crocante', 'un', 6.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(18, 'PIC-CRO-002', 'Picolé Skimo de Morango', 'Picolé', 'Crocante', 'un', 6.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(19, 'PIC-CRO-003', 'Picolé Brigadeiro', 'Picolé', 'Crocante', 'un', 6.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(20, 'MOR-001', 'Moreninha Creme e Chocolate', 'Moreninha', 'Especial', 'un', 8.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(21, 'SOR-001', 'Sorvete Leite Condensado', 'Sorvete', 'Bola', 'bola', 3.00, NULL, 15, 20, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 07:03:56'),
+(22, 'SOR-002', 'Sorvete Creme', 'Sorvete', 'Bola', 'bola', 3.00, NULL, 0, 20, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(23, 'SOR-003', 'Sorvete Maracujá', 'Sorvete', 'Bola', 'bola', 3.00, NULL, 0, 20, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:43:42'),
+(24, 'SOR-004', 'Sorvete Abacaxi Francês', 'Sorvete', 'Bola', 'bola', 3.00, NULL, 0, 20, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(25, 'SOR-005', 'Sorvete Bombom', 'Sorvete', 'Bola', 'bola', 3.00, NULL, 0, 20, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(26, 'SOR-006', 'Sorvete Brigadeiro', 'Sorvete', 'Bola', 'bola', 3.00, NULL, 0, 20, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(27, 'SOR-007', 'Sorvete Morango', 'Sorvete', 'Bola', 'bola', 3.00, NULL, 0, 20, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(28, 'SOR-008', 'Sorvete Baunilha com Nutela', 'Sorvete', 'Bola', 'bola', 3.00, NULL, 0, 20, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(29, 'SOR-009', 'Sorvete Torta Alemã', 'Sorvete', 'Bola', 'bola', 3.00, NULL, 0, 20, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(30, 'SOR-010', 'Sorvete Uva', 'Sorvete', 'Bola', 'bola', 3.00, NULL, 0, 20, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(31, 'SOR-011', 'Sorvete Flocos', 'Sorvete', 'Bola', 'bola', 3.00, NULL, 0, 20, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(32, 'SOR-012', 'Sorvete Chocolate Belga', 'Sorvete', 'Bola', 'bola', 3.00, NULL, 0, 20, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(33, 'BEB-001', 'Coca-Cola 2L', 'Bebida', 'Refrigerante 2L', 'un', 12.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(34, 'BEB-002', 'Guaraná Charrua 2L', 'Bebida', 'Refrigerante 2L', 'un', 10.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(35, 'BEB-003', 'Fanta Guaraná 2L', 'Bebida', 'Refrigerante 2L', 'un', 10.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(36, 'BEB-004', 'Fanta Laranja 2L', 'Bebida', 'Refrigerante 2L', 'un', 10.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(37, 'BEB-005', 'Sprite 2L', 'Bebida', 'Refrigerante 2L', 'un', 10.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(38, 'BEB-006', 'Coca-Cola 1L', 'Bebida', 'Refrigerante 1L', 'un', 8.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(39, 'BEB-007', 'Coca-Cola 600ml', 'Bebida', 'Refrigerante 600ml', 'un', 6.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(40, 'BEB-008', 'Guaraná Antártica 600ml', 'Bebida', 'Refrigerante 600ml', 'un', 6.00, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(41, 'BEB-009', 'Charrua Lata', 'Bebida', 'Lata', 'un', 4.50, NULL, 0, 3, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 07:27:09'),
+(42, 'BEB-010', 'Coca-Cola Lata', 'Bebida', 'Lata', 'un', 4.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(43, 'BEB-011', 'Sprite Lata', 'Bebida', 'Lata', 'un', 4.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(44, 'BEB-012', 'Fanta Uva Lata', 'Bebida', 'Lata', 'un', 4.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(45, 'BEB-013', 'Fanta Laranja Lata', 'Bebida', 'Lata', 'un', 4.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(46, 'BEB-014', 'Água com Gás 500ml', 'Bebida', 'Água', 'un', 2.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(47, 'BEB-015', 'Água sem Gás 500ml', 'Bebida', 'Água', 'un', 2.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(48, 'BEB-016', 'Energético Fusion 473ml', 'Bebida', 'Energético', 'un', 7.50, NULL, 0, 5, 1, NULL, '2026-03-08 04:39:56', '2026-03-08 04:39:56'),
+(49, 'EMB-CAS-001', 'Casquinha', 'Embalagem', 'Sorvete', 'un', 0.00, NULL, 0, 10, 1, NULL, '2026-03-08 10:14:34', '2026-03-08 10:14:34'),
+(50, 'EMB-CAS-002', 'Cascão', 'Embalagem', 'Sorvete', 'un', 0.00, NULL, 0, 10, 1, NULL, '2026-03-08 10:14:34', '2026-03-08 10:14:34'),
+(51, 'EMB-CES-001', 'Cesto', 'Embalagem', 'Sorvete', 'un', 0.00, NULL, 0, 10, 1, NULL, '2026-03-08 10:14:34', '2026-03-08 10:14:34'),
+(52, 'WAF-MAS-001', 'Massa de Waffle', 'Ingrediente', 'Waffle', 'un', 0.00, NULL, 0, 5, 1, NULL, '2026-03-08 10:14:34', '2026-03-08 10:14:34'),
+(53, 'COP-300-001', 'Copo 300ml', 'Embalagem', 'Copo', 'un', 0.00, NULL, 0, 10, 1, NULL, '2026-03-08 10:14:34', '2026-03-08 10:14:34'),
+(54, 'COP-500-001', 'Copo 500ml', 'Embalagem', 'Copo', 'un', 0.00, NULL, 0, 10, 1, NULL, '2026-03-08 10:14:34', '2026-03-08 10:14:34'),
+(55, 'COP-700-001', 'Copo 700ml', 'Embalagem', 'Copo', 'un', 0.00, NULL, 0, 10, 1, NULL, '2026-03-08 10:14:34', '2026-03-08 10:14:34'),
+(56, 'LEI-001', 'Leite', 'Ingrediente', 'Milk-shake', 'ml', 0.00, NULL, 0, 500, 1, NULL, '2026-03-08 10:14:34', '2026-03-08 10:14:34'),
+(57, 'CAN-001', 'Canudo', 'Embalagem', 'Milk-shake', 'un', 0.00, NULL, 0, 20, 1, NULL, '2026-03-08 10:14:34', '2026-03-08 10:14:34');
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `receitas`
+--
+
+CREATE TABLE `receitas` (
+  `id` int(11) NOT NULL,
+  `produto_id` int(11) DEFAULT NULL,
+  `ingrediente_id` int(11) DEFAULT NULL,
+  `quantidade` decimal(10,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `sabores_sorvete`
+--
+
+CREATE TABLE `sabores_sorvete` (
+  `id` int(11) NOT NULL,
+  `nome` varchar(100) NOT NULL,
+  `estoque_bolas` int(11) DEFAULT 0,
+  `ativo` tinyint(1) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Despejando dados para a tabela `sabores_sorvete`
+--
+
+INSERT INTO `sabores_sorvete` (`id`, `nome`, `estoque_bolas`, `ativo`) VALUES
+(1, 'Leite Condensado', 0, 1),
+(2, 'Creme', 0, 1),
+(3, 'Maracujá', 0, 1),
+(4, 'Abacaxi Francês', 0, 1),
+(5, 'Bombom', 0, 1),
+(6, 'Brigadeiro', 0, 1),
+(7, 'Morango', 0, 1),
+(8, 'Baunilha com Nutela', 0, 1),
+(9, 'Torta Alemã', 0, 1),
+(10, 'Uva', 0, 1),
+(11, 'Flocos', 0, 1),
+(12, 'Chocolate Belga', 0, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `tipos_sorvete`
+--
+
+CREATE TABLE `tipos_sorvete` (
+  `id` int(11) NOT NULL,
+  `nome` varchar(50) DEFAULT NULL,
+  `fator_consumo` decimal(5,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Despejando dados para a tabela `tipos_sorvete`
+--
+
+INSERT INTO `tipos_sorvete` (`id`, `nome`, `fator_consumo`) VALUES
+(1, 'Casquinha', 0.80),
+(2, 'Cascão', 1.00),
+(3, 'Cesto', 1.00),
+(4, 'Waffle', 1.00),
+(5, 'Copo 300ml', 1.00),
+(6, 'Copo 500ml', 1.00),
+(7, 'Copo 700ml', 1.00),
+(8, 'Milk-shake 300ml', 1.00),
+(9, 'Milk-shake 500ml', 1.00),
+(10, 'Milk-shake 700ml', 1.00);
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `usuarios`
+--
+
+CREATE TABLE `usuarios` (
+  `id` int(11) NOT NULL,
+  `nome` varchar(120) NOT NULL,
+  `login` varchar(80) NOT NULL,
+  `senha` varchar(255) NOT NULL,
+  `perfil` varchar(30) NOT NULL DEFAULT 'caixa',
+  `ativo` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Despejando dados para a tabela `usuarios`
+--
+
+INSERT INTO `usuarios` (`id`, `nome`, `login`, `senha`, `perfil`, `ativo`, `created_at`, `updated_at`) VALUES
+(1, 'Administrador', 'admin', 'e10adc3949ba59abbe56e057f20f883e', 'admin', 1, '2026-03-08 04:39:56', '2026-03-08 04:39:56');
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura para tabela `vendas`
+--
+
+CREATE TABLE `vendas` (
+  `id` int(11) NOT NULL,
+  `codigo_venda` varchar(40) DEFAULT NULL,
+  `cliente_id` int(11) DEFAULT NULL,
+  `total` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `desconto` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `acrescimo` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `valor_pago` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `troco` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `forma_pagamento` varchar(30) NOT NULL DEFAULT 'Dinheiro',
+  `status` varchar(20) NOT NULL DEFAULT 'FINALIZADA',
+  `observacoes` text DEFAULT NULL,
+  `motivo_cancelamento` text DEFAULT NULL,
+  `data_venda` datetime NOT NULL DEFAULT current_timestamp(),
+  `data_cancelamento` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Índices para tabelas despejadas
+--
+
+--
+-- Índices de tabela `adicionais`
+--
+ALTER TABLE `adicionais`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Índices de tabela `clientes`
+--
+ALTER TABLE `clientes`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_nome` (`nome`);
+
+--
+-- Índices de tabela `fiados`
+--
+ALTER TABLE `fiados`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_fiado_cliente` (`cliente_id`),
+  ADD KEY `idx_fiado_status` (`status`),
+  ADD KEY `idx_fiado_data` (`data`);
+
+--
+-- Índices de tabela `fiado_itens`
+--
+ALTER TABLE `fiado_itens`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_fiado_itens_produto` (`produto_id`),
+  ADD KEY `idx_fiado_id` (`fiado_id`);
+
+--
+-- Índices de tabela `itens_sorvete`
+--
+ALTER TABLE `itens_sorvete`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Índices de tabela `itens_venda`
+--
+ALTER TABLE `itens_venda`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_venda_id` (`venda_id`),
+  ADD KEY `idx_produto_id` (`produto_id`);
+
+--
+-- Índices de tabela `metas`
+--
+ALTER TABLE `metas`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `mes` (`mes`);
+
+--
+-- Índices de tabela `movimentacoes_estoque`
+--
+ALTER TABLE `movimentacoes_estoque`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_movimentacao_produto` (`produto_id`),
+  ADD KEY `idx_movimentacao_data` (`data_movimentacao`);
+
+--
+-- Índices de tabela `pagamentos_fiado`
+--
+ALTER TABLE `pagamentos_fiado`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_pagamentos_fiado` (`fiado_id`);
+
+--
+-- Índices de tabela `produtos`
+--
+ALTER TABLE `produtos`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `sku` (`sku`),
+  ADD KEY `idx_categoria` (`categoria`),
+  ADD KEY `idx_subcategoria` (`subcategoria`),
+  ADD KEY `idx_ativo` (`ativo`);
+
+--
+-- Índices de tabela `receitas`
+--
+ALTER TABLE `receitas`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Índices de tabela `sabores_sorvete`
+--
+ALTER TABLE `sabores_sorvete`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Índices de tabela `tipos_sorvete`
+--
+ALTER TABLE `tipos_sorvete`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Índices de tabela `usuarios`
+--
+ALTER TABLE `usuarios`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `login` (`login`);
+
+--
+-- Índices de tabela `vendas`
+--
+ALTER TABLE `vendas`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_vendas_cliente` (`cliente_id`),
+  ADD KEY `idx_data_venda` (`data_venda`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_forma_pagamento` (`forma_pagamento`);
+
+--
+-- AUTO_INCREMENT para tabelas despejadas
+--
+
+--
+-- AUTO_INCREMENT de tabela `adicionais`
+--
+ALTER TABLE `adicionais`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+
+--
+-- AUTO_INCREMENT de tabela `clientes`
+--
+ALTER TABLE `clientes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de tabela `fiados`
+--
+ALTER TABLE `fiados`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de tabela `fiado_itens`
+--
+ALTER TABLE `fiado_itens`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de tabela `itens_sorvete`
+--
+ALTER TABLE `itens_sorvete`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de tabela `itens_venda`
+--
+ALTER TABLE `itens_venda`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de tabela `metas`
+--
+ALTER TABLE `metas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de tabela `movimentacoes_estoque`
+--
+ALTER TABLE `movimentacoes_estoque`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de tabela `pagamentos_fiado`
+--
+ALTER TABLE `pagamentos_fiado`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de tabela `produtos`
+--
+ALTER TABLE `produtos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=58;
+
+--
+-- AUTO_INCREMENT de tabela `receitas`
+--
+ALTER TABLE `receitas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de tabela `sabores_sorvete`
+--
+ALTER TABLE `sabores_sorvete`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT de tabela `tipos_sorvete`
+--
+ALTER TABLE `tipos_sorvete`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT de tabela `usuarios`
+--
+ALTER TABLE `usuarios`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de tabela `vendas`
+--
+ALTER TABLE `vendas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- Restrições para tabelas despejadas
+--
+
+--
+-- Restrições para tabelas `fiados`
+--
+ALTER TABLE `fiados`
+  ADD CONSTRAINT `fk_fiados_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON UPDATE CASCADE;
+
+--
+-- Restrições para tabelas `fiado_itens`
+--
+ALTER TABLE `fiado_itens`
+  ADD CONSTRAINT `fk_fiado_itens_fiado` FOREIGN KEY (`fiado_id`) REFERENCES `fiados` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_fiado_itens_produto` FOREIGN KEY (`produto_id`) REFERENCES `produtos` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Restrições para tabelas `itens_venda`
+--
+ALTER TABLE `itens_venda`
+  ADD CONSTRAINT `fk_itens_venda_produto` FOREIGN KEY (`produto_id`) REFERENCES `produtos` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_itens_venda_venda` FOREIGN KEY (`venda_id`) REFERENCES `vendas` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Restrições para tabelas `movimentacoes_estoque`
+--
+ALTER TABLE `movimentacoes_estoque`
+  ADD CONSTRAINT `fk_movimentacao_produto` FOREIGN KEY (`produto_id`) REFERENCES `produtos` (`id`) ON UPDATE CASCADE;
+
+--
+-- Restrições para tabelas `pagamentos_fiado`
+--
+ALTER TABLE `pagamentos_fiado`
+  ADD CONSTRAINT `fk_pagamentos_fiado` FOREIGN KEY (`fiado_id`) REFERENCES `fiados` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Restrições para tabelas `vendas`
+--
+ALTER TABLE `vendas`
+  ADD CONSTRAINT `fk_vendas_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
