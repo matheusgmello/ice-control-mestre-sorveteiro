@@ -10,10 +10,12 @@ import dashboardRouter from "./dashboard";
 import relatoriosRouter from "./relatorios";
 import metasRouter from "./metas";
 import authRouter from "./auth";
+import backupRouter from "./backup";
 
 const router: IRouter = Router();
 
 router.use(authRouter);
+router.use(backupRouter);
 router.use(healthRouter);
 router.use(produtosRouter);
 router.use(tiposSorveteRouter);

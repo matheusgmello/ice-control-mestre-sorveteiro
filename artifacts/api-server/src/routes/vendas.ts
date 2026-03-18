@@ -6,6 +6,7 @@ import {
   fiadosTable, fiadoItensTable, clientesTable,
 } from "@workspace/db/schema";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import { extractUser } from "../middleware/auth";
 
 const router = Router();
 
@@ -69,6 +70,7 @@ router.get("/vendas", async (req, res) => {
 
 router.post("/vendas", async (req, res) => {
   try {
+    const admin = extractUser(req);
     const { itens, pagamentos, desconto = 0, acrescimo = 0, clienteId, observacoes } = req.body;
     if (!itens || !itens.length) return res.status(400).json({ error: "Itens são obrigatórios" });
     if (!pagamentos || !pagamentos.length) return res.status(400).json({ error: "Pagamentos são obrigatórios" });
@@ -146,6 +148,8 @@ router.post("/vendas", async (req, res) => {
         formasPagamento,
         status: "FINALIZADA",
         observacoes,
+        criadoPorId: admin?.id ?? null,
+        criadoPorNome: admin?.nome ?? null,
       }).returning();
 
       // Update codigo_venda

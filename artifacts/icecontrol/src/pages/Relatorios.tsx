@@ -8,7 +8,7 @@ import { formatCurrency } from "@/lib/utils";
 import { format, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Calendar, TrendingUp, Package, IceCream, FileDown, Loader2 } from "lucide-react";
+import { Calendar, TrendingUp, Package, IceCream, FileDown, Loader2, UserCheck } from "lucide-react";
 
 const COLORS = [
   "hsl(var(--primary))",
@@ -17,8 +17,6 @@ const COLORS = [
   "hsl(var(--chart-4))",
   "hsl(var(--chart-5))",
 ];
-
-const COLORS_HEX = ["#5a3a1b", "#8a5a2b", "#b07d50", "#d4a96a", "#e8c99a"];
 
 function fmtPDF(val: number) {
   return `R$ ${val.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -36,11 +34,11 @@ async function gerarPDF(params: {
   const { filtro, vendas, produtos, sabores } = params;
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-  const BROWN = [90, 58, 27] as [number, number, number];
-  const BROWN_LIGHT = [138, 90, 43] as [number, number, number];
-  const CREAM = [242, 230, 216] as [number, number, number];
+  const BROWN: [number, number, number] = [90, 58, 27];
+  const BROWN_LIGHT: [number, number, number] = [138, 90, 43];
+  const CREAM: [number, number, number] = [242, 230, 216];
   const WHITE: [number, number, number] = [255, 255, 255];
-  const GRAY = [100, 100, 100] as [number, number, number];
+  const GRAY: [number, number, number] = [100, 100, 100];
 
   const pageW = 210;
   const margin = 14;
@@ -104,8 +102,38 @@ async function gerarPDF(params: {
   });
   y += 30;
 
+  // ── Vendas por Administrador ──────────────────────
+  if (vendas.vendasPorAdmin?.length > 0) {
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...BROWN);
+    doc.text("Vendas por Administrador", margin, y);
+    y += 4;
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [["Administrador", "Nº de Vendas", "Total Faturado"]],
+      body: vendas.vendasPorAdmin.map((a: any) => [
+        a.admin,
+        a.totalVendas,
+        fmtPDF(a.totalFaturado),
+      ]),
+      headStyles: { fillColor: BROWN, textColor: WHITE, fontStyle: "bold", fontSize: 9 },
+      bodyStyles: { fontSize: 9, textColor: [40, 40, 40] },
+      alternateRowStyles: { fillColor: CREAM },
+      columnStyles: {
+        0: { cellWidth: "auto" },
+        1: { cellWidth: 35, halign: "center" },
+        2: { cellWidth: 45, halign: "right" },
+      },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
   // ── Formas de Pagamento ──────────────────────────────
-  if (vendas.formasPagamento && vendas.formasPagamento.length > 0) {
+  if (vendas.formasPagamento?.length > 0) {
+    if (y > 230) { doc.addPage(); y = 20; }
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...BROWN);
@@ -116,12 +144,12 @@ async function gerarPDF(params: {
       startY: y,
       margin: { left: margin, right: margin },
       head: [["Forma de Pagamento", "Transações", "Total"]],
-      body: vendas.formasPagamento.map((fp: any, i: number) => [
+      body: vendas.formasPagamento.map((fp: any) => [
         fp.forma.replace("_", " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
         fp.quantidade,
         fmtPDF(fp.total),
       ]),
-      headStyles: { fillColor: BROWN, textColor: WHITE, fontStyle: "bold", fontSize: 9 },
+      headStyles: { fillColor: BROWN_LIGHT, textColor: WHITE, fontStyle: "bold", fontSize: 9 },
       bodyStyles: { fontSize: 9, textColor: [40, 40, 40] },
       alternateRowStyles: { fillColor: CREAM },
       columnStyles: {
@@ -134,7 +162,7 @@ async function gerarPDF(params: {
   }
 
   // ── Produtos Mais Vendidos ─────────────────────────
-  if (produtos && produtos.length > 0) {
+  if (produtos?.length > 0) {
     if (y > 230) { doc.addPage(); y = 20; }
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
@@ -166,7 +194,7 @@ async function gerarPDF(params: {
   }
 
   // ── Sabores Mais Pedidos ───────────────────────────
-  if (sabores && sabores.length > 0) {
+  if (sabores?.length > 0) {
     if (y > 230) { doc.addPage(); y = 20; }
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
@@ -268,28 +296,12 @@ export default function Relatorios() {
       <Card className="bg-card shadow-sm border-border">
         <CardContent className="p-4 flex flex-wrap gap-4 items-end">
           <div className="space-y-1">
-            <label htmlFor="data-inicio" className="text-xs font-semibold text-muted-foreground">
-              Data Início
-            </label>
-            <Input
-              id="data-inicio"
-              type="date"
-              value={dataInicio}
-              onChange={(e) => setDataInicio(e.target.value)}
-              className="w-40 h-10"
-            />
+            <label htmlFor="data-inicio" className="text-xs font-semibold text-muted-foreground">Data Início</label>
+            <Input id="data-inicio" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-40 h-10" />
           </div>
           <div className="space-y-1">
-            <label htmlFor="data-fim" className="text-xs font-semibold text-muted-foreground">
-              Data Fim
-            </label>
-            <Input
-              id="data-fim"
-              type="date"
-              value={dataFim}
-              onChange={(e) => setDataFim(e.target.value)}
-              className="w-40 h-10"
-            />
+            <label htmlFor="data-fim" className="text-xs font-semibold text-muted-foreground">Data Fim</label>
+            <Input id="data-fim" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="w-40 h-10" />
           </div>
           <Button className="h-10 px-6 bg-secondary hover:bg-secondary/90" onClick={aplicarFiltro}>
             <Calendar className="w-4 h-4 mr-2" /> Filtrar
@@ -322,48 +334,60 @@ export default function Relatorios() {
             <Card className="shadow-sm">
               <CardContent className="p-6">
                 <p className="text-muted-foreground text-sm font-medium mb-1">Ticket Médio</p>
-                <h3 className="text-3xl font-display font-bold text-foreground">
-                  {formatCurrency(vendas.ticketMedio)}
-                </h3>
+                <h3 className="text-3xl font-display font-bold text-foreground">{formatCurrency(vendas.ticketMedio)}</h3>
                 <p className="text-xs text-muted-foreground mt-1">por venda</p>
               </CardContent>
             </Card>
             <Card className="shadow-sm">
               <CardContent className="p-6">
                 <p className="text-muted-foreground text-sm font-medium mb-1">Descontos Concedidos</p>
-                <h3 className="text-3xl font-display font-bold text-destructive">
-                  {formatCurrency(vendas.totalDesconto)}
-                </h3>
+                <h3 className="text-3xl font-display font-bold text-destructive">{formatCurrency(vendas.totalDesconto)}</h3>
                 <p className="text-xs text-muted-foreground mt-1">total de descontos</p>
               </CardContent>
             </Card>
           </div>
 
+          {/* Vendas por Admin */}
+          {vendas.vendasPorAdmin?.length > 0 && (
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserCheck className="w-5 h-5 text-primary" />
+                  Vendas por Administrador
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="divide-y">
+                  {vendas.vendasPorAdmin.map((a: any) => (
+                    <div key={a.admin} className="flex items-center justify-between py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center text-secondary font-bold text-xs">
+                          {a.admin.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">{a.admin}</p>
+                          <p className="text-xs text-muted-foreground">{a.totalVendas} venda{a.totalVendas !== 1 ? "s" : ""}</p>
+                        </div>
+                      </div>
+                      <span className="font-bold text-primary">{formatCurrency(a.totalFaturado)}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Formas de Pagamento */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle>Receita por Forma de Pagamento</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle>Receita por Forma de Pagamento</CardTitle></CardHeader>
               <CardContent className="h-72">
                 {vendas.formasPagamento.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                    Nenhuma venda no período.
-                  </div>
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Nenhuma venda no período.</div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie
-                        data={vendas.formasPagamento}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={70}
-                        outerRadius={100}
-                        paddingAngle={4}
-                        dataKey="total"
-                        nameKey="forma"
-                        stroke="none"
-                      >
+                      <Pie data={vendas.formasPagamento} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={4} dataKey="total" nameKey="forma" stroke="none">
                         {vendas.formasPagamento.map((_: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
@@ -377,24 +401,16 @@ export default function Relatorios() {
             </Card>
 
             <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle>Detalhamento de Pagamentos</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle>Detalhamento de Pagamentos</CardTitle></CardHeader>
               <CardContent>
                 {vendas.formasPagamento.length === 0 ? (
                   <p className="text-muted-foreground text-sm">Nenhum pagamento no período.</p>
                 ) : (
                   <div className="space-y-4">
                     {vendas.formasPagamento.map((fp: any, i: number) => (
-                      <div
-                        key={fp.forma}
-                        className="flex justify-between items-center border-b pb-4 last:border-0 last:pb-0"
-                      >
+                      <div key={fp.forma} className="flex justify-between items-center border-b pb-4 last:border-0 last:pb-0">
                         <div className="flex items-center">
-                          <div
-                            className="w-3 h-3 rounded-full mr-3"
-                            style={{ backgroundColor: COLORS[i % COLORS.length] }}
-                          />
+                          <div className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                           <div>
                             <p className="font-semibold capitalize">{fp.forma.replace("_", " ")}</p>
                             <p className="text-xs text-muted-foreground">{fp.quantidade} transações</p>
@@ -411,44 +427,29 @@ export default function Relatorios() {
 
           {/* Rankings */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Produtos mais vendidos */}
             <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5 text-primary" />
-                  Produtos Mais Vendidos
+                  <Package className="w-5 h-5 text-primary" /> Produtos Mais Vendidos
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {loadingProd ? (
-                  <p className="text-muted-foreground text-sm">Carregando...</p>
-                ) : !produtosRanking || produtosRanking.length === 0 ? (
-                  <p className="text-muted-foreground text-sm italic">
-                    Nenhum produto vendido no período.
-                  </p>
+                {!produtosRanking || produtosRanking.length === 0 ? (
+                  <p className="text-muted-foreground text-sm italic">Nenhum produto vendido no período.</p>
                 ) : (
                   <div className="space-y-3">
                     {produtosRanking.map((p, i) => (
                       <div key={p.produtoId} className="flex items-center gap-3">
-                        <span className="w-6 text-center text-xs font-bold text-muted-foreground">
-                          #{i + 1}
-                        </span>
+                        <span className="w-6 text-center text-xs font-bold text-muted-foreground">#{i + 1}</span>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{p.nome}</p>
                           <div className="w-full bg-muted rounded-full h-1.5 mt-1">
-                            <div
-                              className="bg-primary h-1.5 rounded-full"
-                              style={{
-                                width: `${Math.min(100, (p.quantidade / (produtosRanking[0]?.quantidade || 1)) * 100)}%`,
-                              }}
-                            />
+                            <div className="bg-primary h-1.5 rounded-full" style={{ width: `${Math.min(100, (p.quantidade / (produtosRanking[0]?.quantidade || 1)) * 100)}%` }} />
                           </div>
                         </div>
                         <div className="text-right">
                           <Badge variant="secondary">{p.quantidade} un</Badge>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {formatCurrency(p.totalFaturado)}
-                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">{formatCurrency(p.totalFaturado)}</p>
                         </div>
                       </div>
                     ))}
@@ -457,37 +458,24 @@ export default function Relatorios() {
               </CardContent>
             </Card>
 
-            {/* Sabores mais pedidos */}
             <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <IceCream className="w-5 h-5 text-primary" />
-                  Sabores Mais Pedidos
+                  <IceCream className="w-5 h-5 text-primary" /> Sabores Mais Pedidos
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {loadingSab ? (
-                  <p className="text-muted-foreground text-sm">Carregando...</p>
-                ) : !saboresRanking || saboresRanking.length === 0 ? (
-                  <p className="text-muted-foreground text-sm italic">
-                    Nenhum sorvete vendido no período.
-                  </p>
+                {!saboresRanking || saboresRanking.length === 0 ? (
+                  <p className="text-muted-foreground text-sm italic">Nenhum sorvete vendido no período.</p>
                 ) : (
                   <div className="space-y-3">
                     {saboresRanking.slice(0, 10).map((s, i) => (
                       <div key={s.saborId} className="flex items-center gap-3">
-                        <span className="w-6 text-center text-xs font-bold text-muted-foreground">
-                          #{i + 1}
-                        </span>
+                        <span className="w-6 text-center text-xs font-bold text-muted-foreground">#{i + 1}</span>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{s.nome}</p>
                           <div className="w-full bg-muted rounded-full h-1.5 mt-1">
-                            <div
-                              className="bg-secondary h-1.5 rounded-full"
-                              style={{
-                                width: `${Math.min(100, (s.quantidade / (saboresRanking[0]?.quantidade || 1)) * 100)}%`,
-                              }}
-                            />
+                            <div className="bg-secondary h-1.5 rounded-full" style={{ width: `${Math.min(100, (s.quantidade / (saboresRanking[0]?.quantidade || 1)) * 100)}%` }} />
                           </div>
                         </div>
                         <Badge variant="secondary">{s.quantidade} pedidos</Badge>

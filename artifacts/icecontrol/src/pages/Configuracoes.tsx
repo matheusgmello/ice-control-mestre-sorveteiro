@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Save, Target, CheckCircle2, UserPlus, Users, Trash2, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Save, Target, CheckCircle2, UserPlus, Users, Trash2, Eye, EyeOff, ShieldCheck, Download, Upload, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -115,6 +115,66 @@ export default function Configuracoes() {
   };
 
   const podeAdicionarMais = dadosUsuarios ? dadosUsuarios.total < dadosUsuarios.limite : true;
+
+  const [exportando, setExportando] = useState(false);
+  const [importando, setImportando] = useState(false);
+  const [importErro, setImportErro] = useState("");
+  const [importOk, setImportOk] = useState(false);
+
+  const handleExportar = async () => {
+    setExportando(true);
+    try {
+      const res = await fetch(`${BASE}/api/backup/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Erro ao exportar");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `backup-icecontrol-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err.message ?? "Erro ao exportar banco");
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const handleImportar = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!confirm("ATENÇÃO: Isso substituirá TODOS os dados atuais pelo conteúdo do arquivo. Tem certeza?")) {
+      e.target.value = "";
+      return;
+    }
+    setImportando(true);
+    setImportErro("");
+    setImportOk(false);
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const json = JSON.parse(ev.target?.result as string);
+        const res = await fetch(`${BASE}/api/backup/import`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(json),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Erro ao importar");
+        setImportOk(true);
+        queryClient.invalidateQueries();
+        setTimeout(() => setImportOk(false), 4000);
+      } catch (err: any) {
+        setImportErro(err.message ?? "Erro ao importar arquivo");
+      } finally {
+        setImportando(false);
+        e.target.value = "";
+      }
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -233,6 +293,69 @@ export default function Configuracoes() {
               Limite de {dadosUsuarios?.limite} administradores atingido. Remova um para adicionar outro.
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Backup e Restauração */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Download className="w-5 h-5 mr-2 text-secondary" /> Backup e Restauração
+          </CardTitle>
+          <CardDescription>
+            Exporte todos os dados do sistema para um arquivo seguro, ou restaure a partir de um backup anterior.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              onClick={handleExportar}
+              disabled={exportando}
+              variant="outline"
+              className="flex-1 border-primary/30 hover:bg-primary/5"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {exportando ? "Exportando..." : "Exportar Banco de Dados"}
+            </Button>
+
+            <label className="flex-1">
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleImportar}
+                disabled={importando}
+              />
+              <span
+                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-md border text-sm font-medium cursor-pointer transition-colors w-full
+                  ${importando
+                    ? "opacity-50 pointer-events-none bg-muted border-muted-foreground/20"
+                    : "border-destructive/30 text-destructive hover:bg-destructive/5"
+                  }`}
+              >
+                <Upload className="w-4 h-4" />
+                {importando ? "Importando..." : "Importar Banco de Dados"}
+              </span>
+            </label>
+          </div>
+
+          {importErro && (
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 text-sm">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              {importErro}
+            </div>
+          )}
+          {importOk && (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-green-700 text-sm">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              Banco de dados restaurado com sucesso!
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            O arquivo exportado contém todos os dados: produtos, vendas, fiados, estoque e configurações.
+            Recomendamos fazer backup regularmente e guardar o arquivo em local seguro.
+          </p>
         </CardContent>
       </Card>
 

@@ -16,6 +16,8 @@ export const vendasTable = pgTable("vendas", {
   status: varchar("status", { length: 20 }).notNull().default("FINALIZADA"),
   observacoes: text("observacoes"),
   motivoCancelamento: text("motivo_cancelamento"),
+  criadoPorId: integer("criado_por_id"),
+  criadoPorNome: varchar("criado_por_nome", { length: 100 }),
   dataVenda: timestamp("data_venda").notNull().defaultNow(),
   dataCancelamento: timestamp("data_cancelamento"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

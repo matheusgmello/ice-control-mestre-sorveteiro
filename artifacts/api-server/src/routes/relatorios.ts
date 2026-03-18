@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { vendasTable, itensVendaTable, itensSorveteSaboresTable, clientesTable, pagamentosVendaTable } from "@workspace/db/schema";
-import { and, gte, lte, eq, desc, sql } from "drizzle-orm";
+import { and, gte, lte, eq, desc, sql, isNotNull } from "drizzle-orm";
 
 const router = Router();
 
@@ -38,6 +38,8 @@ router.get("/relatorios/vendas", async (req, res) => {
         motivoCancelamento: vendasTable.motivoCancelamento,
         dataVenda: vendasTable.dataVenda,
         dataCancelamento: vendasTable.dataCancelamento,
+        criadoPorId: vendasTable.criadoPorId,
+        criadoPorNome: vendasTable.criadoPorNome,
       })
       .from(vendasTable)
       .leftJoin(clientesTable, eq(vendasTable.clienteId, clientesTable.id))
@@ -48,6 +50,17 @@ router.get("/relatorios/vendas", async (req, res) => {
     const totalDesconto = vendas.reduce((s, v) => s + Number(v.desconto), 0);
     const totalAcrescimo = vendas.reduce((s, v) => s + Number(v.acrescimo), 0);
     const ticketMedio = vendas.length > 0 ? total / vendas.length : 0;
+
+    // Admin breakdown
+    const vendasPorAdmin = Object.values(
+      vendas.reduce((acc: Record<string, any>, v: any) => {
+        const nome = (v as any).criadoPorNome ?? "Sem registro";
+        if (!acc[nome]) acc[nome] = { admin: nome, totalVendas: 0, totalFaturado: 0 };
+        acc[nome].totalVendas++;
+        acc[nome].totalFaturado += Number(v.total);
+        return acc;
+      }, {})
+    );
 
     // Formas de pagamento breakdown
     const formasPagamento = await db
@@ -67,6 +80,7 @@ router.get("/relatorios/vendas", async (req, res) => {
       totalAcrescimo: Number(totalAcrescimo.toFixed(2)),
       totalVendas: vendas.length,
       ticketMedio: Number(ticketMedio.toFixed(2)),
+      vendasPorAdmin: vendasPorAdmin.map((a: any) => ({ ...a, totalFaturado: Number(a.totalFaturado.toFixed(2)) })),
       vendas: vendas.map(v => ({
         ...v,
         total: Number(v.total),
