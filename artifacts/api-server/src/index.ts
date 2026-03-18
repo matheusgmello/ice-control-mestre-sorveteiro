@@ -1,6 +1,8 @@
+try { process.loadEnvFile?.(); } catch {}
+
 import app from "./app";
 
-const rawPort = process.env["PORT"];
+const rawPort = process.env["PORT"] ?? process.env["PORT_API"];
 
 if (!rawPort) {
   throw new Error(

@@ -1,3 +1,5 @@
+try { process.loadEnvFile?.(); } catch {}
+
 import { defineConfig } from "drizzle-kit";
 import path from "path";
 

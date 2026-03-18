@@ -14,6 +14,39 @@ function signToken(payload: { id: number; email: string; nome: string; role: str
   return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 }
 
+router.get("/auth/setup-status", async (_req, res) => {
+  try {
+    const todos = await db.select({ id: usuariosTable.id }).from(usuariosTable);
+    res.json({ precisaSetup: todos.length === 0 });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao verificar setup" });
+  }
+});
+
+router.post("/auth/setup", async (req, res) => {
+  try {
+    const todos = await db.select({ id: usuariosTable.id }).from(usuariosTable);
+    if (todos.length > 0) {
+      return res.status(400).json({ error: "Sistema já possui administradores cadastrados. Use a tela de login." });
+    }
+
+    const { nome, email, senha } = req.body;
+    if (!nome || !email || !senha) return res.status(400).json({ error: "Nome, email e senha são obrigatórios" });
+    if (senha.length < 6) return res.status(400).json({ error: "Senha deve ter no mínimo 6 caracteres" });
+
+    const emailNorm = email.toLowerCase().trim();
+    const senhaHash = await bcrypt.hash(senha, 10);
+    const [novo] = await db.insert(usuariosTable).values({ nome: nome.trim(), email: emailNorm, senhaHash, role: "admin" }).returning();
+
+    const token = signToken({ id: novo.id, email: novo.email, nome: novo.nome, role: novo.role });
+    res.status(201).json({ token, usuario: { id: novo.id, nome: novo.nome, email: novo.email, role: novo.role } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao criar administrador" });
+  }
+});
+
 router.post("/auth/login", async (req, res) => {
   try {
     const { email, senha } = req.body;
