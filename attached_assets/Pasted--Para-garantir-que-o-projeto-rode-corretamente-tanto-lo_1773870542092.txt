@@ -1,0 +1,37 @@
+  Para garantir que o projeto rode corretamente tanto localmente (Windows) quanto no Replit, apliquei as seguintes
+  correções:
+
+  1. Estabilidade do Banco de Dados (docker-compose.yml)
+   * Alteração: Mudei a imagem de postgres:latest para postgres:16.
+   * Motivo: A versão 18+ do Postgres mudou a estrutura do diretório de dados, causando falhas ao subir o container com
+     volumes existentes. A versão 16 é estável e compatível com o ambiente Replit.
+
+  2. Compatibilidade Windows e Binários Nativos (pnpm-workspace.yaml)
+   * Alteração: Removi as cláusulas overrides que bloqueavam a instalação de dependências nativas para Windows (ex:
+     @rollup/rollup-win32-x64-msvc).
+   * Motivo: Sem esses binários, o Vite e o Rollup falham ao iniciar no Windows.
+
+  3. Variáveis de Ambiente e cross-env (package.json)
+   * Alteração: Instalei o pacote cross-env na raiz do workspace e atualizei o script dev do api-server.
+   * Motivo: O Windows não aceita a sintaxe NODE_ENV=development command. O cross-env torna o comando compatível com
+     qualquer sistema operacional.
+
+  4. Carregamento Automático do .env (Arquivos de Configuração)
+  Atualizei os seguintes arquivos para carregar o .env da raiz automaticamente usando a função nativa
+  process.loadEnvFile() do Node.js 20+:
+
+   * lib/db/drizzle.config.ts: Agora lê a DATABASE_URL diretamente da raiz, facilitando o comando pnpm db:push.
+   * artifacts/api-server/src/index.ts: Agora carrega o .env e aceita tanto PORT quanto PORT_API.
+   * artifacts/icecontrol/vite.config.ts: Agora carrega o .env, aceita PORT_WEB e define um BASE_PATH padrão como "/"
+     caso não exista.
+
+  ---
+
+  🚀 Status Atual
+   * Database: Configurado e rodando no Postgres 16.
+   * API Server: Rodando na porta 3001 (carregando do .env).
+   * Frontend (Vite): Rodando na porta 3000 (carregando do .env).
+   * Drizzle: Sincronizado com o banco após o pnpm db:push.
+
+  Instrução para o Replit AI: "Por favor, aplique essas melhorias de carregamento de ambiente e compatibilidade de
+  sistema para que o projeto funcione perfeitamente tanto no deploy quanto no ambiente de desenvolvimento local."

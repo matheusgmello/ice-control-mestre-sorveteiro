@@ -1,0 +1,1463 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 2.0.0
+  description: IceControl v2.0 API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: produtos
+    description: Products and flavors
+  - name: estoque
+    description: Inventory management
+  - name: vendas
+    description: Sales / PDV
+  - name: clientes
+    description: Customers
+  - name: fiados
+    description: Credit accounts
+  - name: relatorios
+    description: Reports
+  - name: dashboard
+    description: Dashboard
+  - name: tipos-sorvete
+    description: Ice cream types/bases
+  - name: adicionais
+    description: Ice cream extras
+  - name: metas
+    description: Monthly goals
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ── Produtos ────────────────────────────────────────────────
+  /produtos:
+    get:
+      operationId: listarProdutos
+      tags: [produtos]
+      summary: List all products
+      parameters:
+        - name: categoria
+          in: query
+          schema:
+            type: string
+        - name: busca
+          in: query
+          schema:
+            type: string
+        - name: ativo
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Produto"
+    post:
+      operationId: criarProduto
+      tags: [produtos]
+      summary: Create a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriarProdutoInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Produto"
+
+  /produtos/{id}:
+    get:
+      operationId: buscarProduto
+      tags: [produtos]
+      summary: Get product by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Produto"
+    put:
+      operationId: atualizarProduto
+      tags: [produtos]
+      summary: Update product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtualizarProdutoInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Produto"
+    delete:
+      operationId: inativarProduto
+      tags: [produtos]
+      summary: Deactivate product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Produto"
+
+  # ── Sabores ────────────────────────────────────────────────
+  /sabores:
+    get:
+      operationId: listarSabores
+      tags: [produtos]
+      summary: List all ice cream flavors
+      parameters:
+        - name: ativo
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of flavors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sabor"
+    post:
+      operationId: criarSabor
+      tags: [produtos]
+      summary: Create a flavor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriarSaborInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sabor"
+
+  /sabores/{id}:
+    put:
+      operationId: atualizarSabor
+      tags: [produtos]
+      summary: Update flavor
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtualizarSaborInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sabor"
+
+  # ── Tipos de Sorvete ───────────────────────────────────────
+  /tipos-sorvete:
+    get:
+      operationId: listarTiposSorvete
+      tags: [tipos-sorvete]
+      summary: List ice cream base types
+      responses:
+        "200":
+          description: List of types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TipoSorvete"
+
+  # ── Adicionais ─────────────────────────────────────────────
+  /adicionais:
+    get:
+      operationId: listarAdicionais
+      tags: [adicionais]
+      summary: List extras (toppings/sauces)
+      parameters:
+        - name: tipo
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of extras
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Adicional"
+
+  # ── Estoque ────────────────────────────────────────────────
+  /estoque/movimentacoes:
+    get:
+      operationId: listarMovimentacoes
+      tags: [estoque]
+      summary: List stock movements
+      parameters:
+        - name: produtoId
+          in: query
+          schema:
+            type: integer
+        - name: tipo
+          in: query
+          schema:
+            type: string
+        - name: dataInicio
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dataFim
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: List of movements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MovimentacaoEstoque"
+    post:
+      operationId: registrarMovimentacao
+      tags: [estoque]
+      summary: Register a stock movement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrarMovimentacaoInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovimentacaoEstoque"
+
+  /estoque/sabores/movimentacoes:
+    post:
+      operationId: movimentarEstoqueSabor
+      tags: [estoque]
+      summary: Register a flavor stock movement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MovimentarSaborInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sabor"
+
+  # ── Vendas ─────────────────────────────────────────────────
+  /vendas:
+    get:
+      operationId: listarVendas
+      tags: [vendas]
+      summary: List sales
+      parameters:
+        - name: dataInicio
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dataFim
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: formaPagamento
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of sales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Venda"
+    post:
+      operationId: criarVenda
+      tags: [vendas]
+      summary: Create a new sale (finalizes cart)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriarVendaInput"
+      responses:
+        "201":
+          description: Sale created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Venda"
+
+  /vendas/{id}:
+    get:
+      operationId: buscarVenda
+      tags: [vendas]
+      summary: Get sale details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendaDetalhada"
+
+  /vendas/{id}/cancelar:
+    post:
+      operationId: cancelarVenda
+      tags: [vendas]
+      summary: Cancel a sale and revert stock
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelarVendaInput"
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Venda"
+
+  # ── Clientes ───────────────────────────────────────────────
+  /clientes:
+    get:
+      operationId: listarClientes
+      tags: [clientes]
+      summary: List customers
+      parameters:
+        - name: busca
+          in: query
+          schema:
+            type: string
+        - name: ativo
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Cliente"
+    post:
+      operationId: criarCliente
+      tags: [clientes]
+      summary: Create a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriarClienteInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cliente"
+
+  /clientes/{id}:
+    get:
+      operationId: buscarCliente
+      tags: [clientes]
+      summary: Get customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cliente"
+    put:
+      operationId: atualizarCliente
+      tags: [clientes]
+      summary: Update customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtualizarClienteInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cliente"
+
+  # ── Fiados ─────────────────────────────────────────────────
+  /fiados:
+    get:
+      operationId: listarFiados
+      tags: [fiados]
+      summary: List credit accounts
+      parameters:
+        - name: clienteId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of credit accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FiadoResumo"
+
+  /fiados/{id}:
+    get:
+      operationId: buscarFiado
+      tags: [fiados]
+      summary: Get credit account details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Credit account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FiadoDetalhado"
+
+  /fiados/{id}/pagamento:
+    post:
+      operationId: registrarPagamentoFiado
+      tags: [fiados]
+      summary: Register a payment on a credit account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PagamentoFiadoInput"
+      responses:
+        "200":
+          description: Payment registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FiadoDetalhado"
+
+  # ── Dashboard ──────────────────────────────────────────────
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get dashboard data
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardData"
+
+  # ── Relatórios ─────────────────────────────────────────────
+  /relatorios/vendas:
+    get:
+      operationId: relatorioVendas
+      tags: [relatorios]
+      summary: Sales report
+      parameters:
+        - name: dataInicio
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: dataFim
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Sales report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelatorioVendas"
+
+  /relatorios/produtos-mais-vendidos:
+    get:
+      operationId: relatorioProdutosMaisVendidos
+      tags: [relatorios]
+      summary: Best selling products report
+      parameters:
+        - name: dataInicio
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: dataFim
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Best sellers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProdutoRanking"
+
+  /relatorios/sabores-mais-vendidos:
+    get:
+      operationId: relatorioSaboresMaisVendidos
+      tags: [relatorios]
+      summary: Best selling flavors report
+      parameters:
+        - name: dataInicio
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: dataFim
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Best flavors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SaborRanking"
+
+  /relatorios/formas-pagamento:
+    get:
+      operationId: relatorioFormasPagamento
+      tags: [relatorios]
+      summary: Sales by payment method
+      parameters:
+        - name: dataInicio
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: dataFim
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Payment breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FormaPagamentoResumo"
+
+  # ── Metas ──────────────────────────────────────────────────
+  /metas:
+    get:
+      operationId: listarMetas
+      tags: [metas]
+      summary: List goals
+      responses:
+        "200":
+          description: Goals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Meta"
+    post:
+      operationId: salvarMeta
+      tags: [metas]
+      summary: Create or update a monthly goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetaInput"
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meta"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    Produto:
+      type: object
+      properties:
+        id:
+          type: integer
+        sku:
+          type: string
+        nome:
+          type: string
+        categoria:
+          type: string
+        subcategoria:
+          type: string
+          nullable: true
+        unidadeMedida:
+          type: string
+        preco:
+          type: number
+        precoCusto:
+          type: number
+          nullable: true
+        estoque:
+          type: integer
+        estoqueMinimo:
+          type: integer
+        ativo:
+          type: boolean
+        observacoes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, sku, nome, categoria, unidadeMedida, preco, estoque, estoqueMinimo, ativo, createdAt, updatedAt]
+
+    CriarProdutoInput:
+      type: object
+      properties:
+        sku:
+          type: string
+        nome:
+          type: string
+        categoria:
+          type: string
+        subcategoria:
+          type: string
+          nullable: true
+        unidadeMedida:
+          type: string
+        preco:
+          type: number
+        precoCusto:
+          type: number
+          nullable: true
+        estoque:
+          type: integer
+        estoqueMinimo:
+          type: integer
+        observacoes:
+          type: string
+          nullable: true
+      required: [sku, nome, categoria, unidadeMedida, preco]
+
+    AtualizarProdutoInput:
+      type: object
+      properties:
+        sku:
+          type: string
+        nome:
+          type: string
+        categoria:
+          type: string
+        subcategoria:
+          type: string
+          nullable: true
+        unidadeMedida:
+          type: string
+        preco:
+          type: number
+        precoCusto:
+          type: number
+          nullable: true
+        estoqueMinimo:
+          type: integer
+        ativo:
+          type: boolean
+        observacoes:
+          type: string
+          nullable: true
+
+    Sabor:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        estoqueBolas:
+          type: integer
+        estoqueMinimo:
+          type: integer
+        ativo:
+          type: boolean
+      required: [id, nome, estoqueBolas, estoqueMinimo, ativo]
+
+    CriarSaborInput:
+      type: object
+      properties:
+        nome:
+          type: string
+        estoqueBolas:
+          type: integer
+        estoqueMinimo:
+          type: integer
+      required: [nome]
+
+    AtualizarSaborInput:
+      type: object
+      properties:
+        nome:
+          type: string
+        estoqueMinimo:
+          type: integer
+        ativo:
+          type: boolean
+
+    TipoSorvete:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        numeroBolas:
+          type: integer
+        preco:
+          type: number
+        produtoEmbalagembId:
+          type: integer
+          nullable: true
+        requerLeite:
+          type: boolean
+        requerCanudo:
+          type: boolean
+      required: [id, nome, numeroBolas, preco, requerLeite, requerCanudo]
+
+    Adicional:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        tipo:
+          type: string
+        precoExtra:
+          type: number
+        estoque:
+          type: integer
+      required: [id, nome, tipo, precoExtra, estoque]
+
+    MovimentacaoEstoque:
+      type: object
+      properties:
+        id:
+          type: integer
+        produtoId:
+          type: integer
+        produtoNome:
+          type: string
+        tipo:
+          type: string
+        quantidade:
+          type: integer
+        estoqueAntes:
+          type: integer
+        estoqueDepois:
+          type: integer
+        motivo:
+          type: string
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+        dataMovimentacao:
+          type: string
+          format: date-time
+        precoCusto:
+          type: number
+          nullable: true
+        valorTotalNota:
+          type: number
+          nullable: true
+      required: [id, produtoId, produtoNome, tipo, quantidade, estoqueAntes, estoqueDepois, dataMovimentacao]
+
+    RegistrarMovimentacaoInput:
+      type: object
+      properties:
+        produtoId:
+          type: integer
+        tipo:
+          type: string
+          enum: [entrada, saida]
+        quantidade:
+          type: integer
+        motivo:
+          type: string
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+        precoCusto:
+          type: number
+          nullable: true
+        valorTotalNota:
+          type: number
+          nullable: true
+      required: [produtoId, tipo, quantidade]
+
+    MovimentarSaborInput:
+      type: object
+      properties:
+        saborId:
+          type: integer
+        tipo:
+          type: string
+          enum: [entrada, saida]
+        quantidade:
+          type: integer
+        motivo:
+          type: string
+          nullable: true
+      required: [saborId, tipo, quantidade]
+
+    ItemVendaInput:
+      type: object
+      properties:
+        tipo:
+          type: string
+          enum: [produto, sorvete]
+        produtoId:
+          type: integer
+          nullable: true
+        quantidade:
+          type: integer
+        precoUnitario:
+          type: number
+        tipoSorveteId:
+          type: integer
+          nullable: true
+        saboresIds:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        coberturaId:
+          type: integer
+          nullable: true
+        adicionaisIds:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        adicionaisPagosIds:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+      required: [tipo, quantidade, precoUnitario]
+
+    PagamentoInput:
+      type: object
+      properties:
+        forma:
+          type: string
+          enum: [dinheiro, pix, cartao, fiado]
+        valor:
+          type: number
+      required: [forma, valor]
+
+    CriarVendaInput:
+      type: object
+      properties:
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItemVendaInput"
+        pagamentos:
+          type: array
+          items:
+            $ref: "#/components/schemas/PagamentoInput"
+        desconto:
+          type: number
+          nullable: true
+        acrescimo:
+          type: number
+          nullable: true
+        clienteId:
+          type: integer
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+      required: [itens, pagamentos]
+
+    ItemVenda:
+      type: object
+      properties:
+        id:
+          type: integer
+        vendaId:
+          type: integer
+        tipo:
+          type: string
+        produtoId:
+          type: integer
+          nullable: true
+        produtoNome:
+          type: string
+        quantidade:
+          type: integer
+        precoUnitario:
+          type: number
+        subtotal:
+          type: number
+        tipoSorveteId:
+          type: integer
+          nullable: true
+        tipoSorveteNome:
+          type: string
+          nullable: true
+        sabores:
+          type: array
+          items:
+            $ref: "#/components/schemas/SaborResumo"
+          nullable: true
+        cobertura:
+          type: string
+          nullable: true
+        adicionais:
+          type: string
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+      required: [id, vendaId, tipo, produtoNome, quantidade, precoUnitario, subtotal]
+
+    SaborResumo:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+      required: [id, nome]
+
+    Venda:
+      type: object
+      properties:
+        id:
+          type: integer
+        codigoVenda:
+          type: string
+        clienteId:
+          type: integer
+          nullable: true
+        clienteNome:
+          type: string
+          nullable: true
+        total:
+          type: number
+        desconto:
+          type: number
+        acrescimo:
+          type: number
+        valorPago:
+          type: number
+        troco:
+          type: number
+        formasPagamento:
+          type: string
+        status:
+          type: string
+        observacoes:
+          type: string
+          nullable: true
+        motivoCancelamento:
+          type: string
+          nullable: true
+        dataVenda:
+          type: string
+          format: date-time
+        dataCancelamento:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, codigoVenda, total, desconto, acrescimo, valorPago, troco, formasPagamento, status, dataVenda]
+
+    VendaDetalhada:
+      allOf:
+        - $ref: "#/components/schemas/Venda"
+        - type: object
+          properties:
+            itens:
+              type: array
+              items:
+                $ref: "#/components/schemas/ItemVenda"
+            pagamentos:
+              type: array
+              items:
+                $ref: "#/components/schemas/PagamentoVenda"
+          required: [itens, pagamentos]
+
+    PagamentoVenda:
+      type: object
+      properties:
+        id:
+          type: integer
+        forma:
+          type: string
+        valor:
+          type: number
+      required: [id, forma, valor]
+
+    CancelarVendaInput:
+      type: object
+      properties:
+        motivo:
+          type: string
+      required: [motivo]
+
+    Cliente:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        telefone:
+          type: string
+          nullable: true
+        endereco:
+          type: string
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+        ativo:
+          type: boolean
+        saldoFiado:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, nome, ativo, saldoFiado, createdAt]
+
+    CriarClienteInput:
+      type: object
+      properties:
+        nome:
+          type: string
+        telefone:
+          type: string
+          nullable: true
+        endereco:
+          type: string
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+      required: [nome]
+
+    AtualizarClienteInput:
+      type: object
+      properties:
+        nome:
+          type: string
+        telefone:
+          type: string
+          nullable: true
+        endereco:
+          type: string
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+        ativo:
+          type: boolean
+
+    FiadoResumo:
+      type: object
+      properties:
+        id:
+          type: integer
+        clienteId:
+          type: integer
+        clienteNome:
+          type: string
+        total:
+          type: number
+        valorPago:
+          type: number
+        saldo:
+          type: number
+        status:
+          type: string
+        data:
+          type: string
+          format: date-time
+        dataPagamento:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, clienteId, clienteNome, total, valorPago, saldo, status, data]
+
+    FiadoDetalhado:
+      allOf:
+        - $ref: "#/components/schemas/FiadoResumo"
+        - type: object
+          properties:
+            itens:
+              type: array
+              items:
+                $ref: "#/components/schemas/FiadoItem"
+            pagamentos:
+              type: array
+              items:
+                $ref: "#/components/schemas/PagamentoFiado"
+            observacoes:
+              type: string
+              nullable: true
+          required: [itens, pagamentos]
+
+    FiadoItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        produto:
+          type: string
+        quantidade:
+          type: integer
+        preco:
+          type: number
+        subtotal:
+          type: number
+      required: [id, produto, quantidade, preco, subtotal]
+
+    PagamentoFiado:
+      type: object
+      properties:
+        id:
+          type: integer
+        valor:
+          type: number
+        formaPagamento:
+          type: string
+        observacoes:
+          type: string
+          nullable: true
+        dataPagamento:
+          type: string
+          format: date-time
+      required: [id, valor, formaPagamento, dataPagamento]
+
+    PagamentoFiadoInput:
+      type: object
+      properties:
+        valor:
+          type: number
+        formaPagamento:
+          type: string
+        observacoes:
+          type: string
+          nullable: true
+      required: [valor, formaPagamento]
+
+    DashboardData:
+      type: object
+      properties:
+        totalHoje:
+          type: number
+        totalMes:
+          type: number
+        ticketMedio:
+          type: number
+        totalVendasHoje:
+          type: integer
+        saldoFiadosAbertos:
+          type: number
+        totalFiadosAbertos:
+          type: integer
+        metaMes:
+          type: number
+          nullable: true
+        progressoMeta:
+          type: number
+        vendasDiarias:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendaDiaria"
+        saboresBaixoEstoque:
+          type: array
+          items:
+            $ref: "#/components/schemas/Sabor"
+        produtosBaixoEstoque:
+          type: array
+          items:
+            $ref: "#/components/schemas/Produto"
+      required: [totalHoje, totalMes, ticketMedio, totalVendasHoje, saldoFiadosAbertos, totalFiadosAbertos, progressoMeta, vendasDiarias, saboresBaixoEstoque, produtosBaixoEstoque]
+
+    VendaDiaria:
+      type: object
+      properties:
+        data:
+          type: string
+        total:
+          type: number
+        quantidade:
+          type: integer
+      required: [data, total, quantidade]
+
+    RelatorioVendas:
+      type: object
+      properties:
+        total:
+          type: number
+        totalDesconto:
+          type: number
+        totalAcrescimo:
+          type: number
+        totalVendas:
+          type: integer
+        ticketMedio:
+          type: number
+        vendas:
+          type: array
+          items:
+            $ref: "#/components/schemas/Venda"
+        formasPagamento:
+          type: array
+          items:
+            $ref: "#/components/schemas/FormaPagamentoResumo"
+      required: [total, totalDesconto, totalAcrescimo, totalVendas, ticketMedio, vendas, formasPagamento]
+
+    ProdutoRanking:
+      type: object
+      properties:
+        produtoId:
+          type: integer
+        nome:
+          type: string
+        categoria:
+          type: string
+        quantidade:
+          type: integer
+        totalFaturado:
+          type: number
+      required: [produtoId, nome, categoria, quantidade, totalFaturado]
+
+    SaborRanking:
+      type: object
+      properties:
+        saborId:
+          type: integer
+        nome:
+          type: string
+        quantidade:
+          type: integer
+      required: [saborId, nome, quantidade]
+
+    FormaPagamentoResumo:
+      type: object
+      properties:
+        forma:
+          type: string
+        total:
+          type: number
+        quantidade:
+          type: integer
+      required: [forma, total, quantidade]
+
+    Meta:
+      type: object
+      properties:
+        id:
+          type: integer
+        mes:
+          type: string
+        valor:
+          type: number
+        observacoes:
+          type: string
+          nullable: true
+      required: [id, mes, valor]
+
+    MetaInput:
+      type: object
+      properties:
+        mes:
+          type: string
+        valor:
+          type: number
+        observacoes:
+          type: string
+          nullable: true
+      required: [mes, valor]

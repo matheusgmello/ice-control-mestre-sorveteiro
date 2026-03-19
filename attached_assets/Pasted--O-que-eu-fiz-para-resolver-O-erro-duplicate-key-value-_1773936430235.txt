@@ -1,0 +1,37 @@
+  O que eu fiz para resolver:
+  O erro "duplicate key value violates unique constraint" acontecia porque as sequências de IDs do banco de dados
+  estavam dessincronizadas com os dados reais. Isso é comum quando dados são inseridos manualmente ou por scripts que
+  não atualizam o contador automático do PostgreSQL.
+
+   1. Sincronização de Sequências: Executei comandos no banco de dados para resetar o contador de ID de todas as tabelas
+      (vendas, pagamentos, itens, produtos, etc.) para o valor máximo atual + 1.
+   2. Prevenção: Adicionei um endpoint oculto na API (/api/fix-sequences) que pode ser usado no futuro caso esse
+      problema ocorra novamente após uma migração de dados.
+
+  Instrução para o Replit AI:
+  Se você encontrar esse erro no Replit, peça ao Replit AI para rodar o seguinte comando SQL no banco de dados (ou peça
+  para ele "sincronizar as sequências de ID com o valor máximo atual"):
+
+  "Por favor, execute este SQL para sincronizar as sequências de ID de todas as tabelas, evitando erros de chave
+  duplicada:"
+
+    1 SELECT setval(pg_get_serial_sequence('vendas', 'id'), COALESCE((SELECT MAX(id) FROM vendas), 0) + 1, false);
+    2 SELECT setval(pg_get_serial_sequence('pagamentos_venda', 'id'), COALESCE((SELECT MAX(id) FROM pagamentos_venda),
+      0) + 1, false);
+    3 SELECT setval(pg_get_serial_sequence('itens_venda', 'id'), COALESCE((SELECT MAX(id) FROM itens_venda), 0) + 1,
+      false);
+    4 SELECT setval(pg_get_serial_sequence('itens_sorvete_sabores', 'id'), COALESCE((SELECT MAX(id) FROM
+      itens_sorvete_sabores), 0) + 1, false);
+    5 SELECT setval(pg_get_serial_sequence('clientes', 'id'), COALESCE((SELECT MAX(id) FROM clientes), 0) + 1, false);
+    6 SELECT setval(pg_get_serial_sequence('produtos', 'id'), COALESCE((SELECT MAX(id) FROM produtos), 0) + 1, false);
+    7 SELECT setval(pg_get_serial_sequence('movimentacoes_estoque', 'id'), COALESCE((SELECT MAX(id) FROM
+      movimentacoes_estoque), 0) + 1, false);
+    8 SELECT setval(pg_get_serial_sequence('fiados', 'id'), COALESCE((SELECT MAX(id) FROM fiados), 0) + 1, false);
+    9 SELECT setval(pg_get_serial_sequence('metas', 'id'), COALESCE((SELECT MAX(id) FROM metas), 0) + 1, false);
+   10 SELECT setval(pg_get_serial_sequence('tipos_sorvete', 'id'), COALESCE((SELECT MAX(id) FROM tipos_sorvete), 0) + 1,
+      false);
+   11 SELECT setval(pg_get_serial_sequence('sabores_sorvete', 'id'), COALESCE((SELECT MAX(id) FROM sabores_sorvete), 0)
+      + 1, false);
+   12 SELECT setval(pg_get_serial_sequence('usuarios', 'id'), COALESCE((SELECT MAX(id) FROM usuarios), 0) + 1, false);
+
+  Isso resolverá o erro de imediato e permitirá que novas vendas sejam registradas.

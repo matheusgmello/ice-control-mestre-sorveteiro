@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: icecontrol_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: icecontrol
+      POSTGRES_PASSWORD: icecontrol123
+      POSTGRES_DB: icecontrol
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+volumes:
+  pg_data:

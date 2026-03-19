@@ -1,0 +1,891 @@
+﻿Levantamento de Requisitos do Sistema IceControl
+1. Caixa / PDV
+1.1 Venda de Produto Simples
+
+Descrição:
+O sistema deve permitir vender produtos comuns como bebidas, picolés, água, etc.
+
+Como funciona hoje:
+
+Seleciona produto
+
+Informa quantidade
+
+Calcula subtotal
+
+Adiciona ao carrinho
+
+Valida estoque antes de adicionar
+
+Exemplo:
+
+Coca-Cola 2L
+
+Quantidade: 2
+
+Subtotal calculado automaticamente
+
+Já implementado:
+
+Sim
+
+Falta melhorar:
+
+Busca mais rápida
+
+Atalho por teclado
+
+Leitura por código/SKU
+
+Autocomplete
+
+1.2 Venda Rápida de Sorvete
+
+Descrição:
+O sistema deve permitir montar sorvetes por tipo/base e sabores.
+
+Tipos atuais:
+
+Casquinha
+
+Cascão
+
+Cesto
+
+Waffle
+
+Copo 300ml
+
+Copo 500ml
+
+Copo 700ml
+
+Milk-shake 300ml
+
+Milk-shake 500ml
+
+Milk-shake 700ml
+
+Como funciona hoje:
+
+Escolhe a base
+
+Em alguns casos escolhe tamanho
+
+Seleciona os sabores conforme a regra do tipo
+
+Adiciona bola extra se quiser
+
+Escolhe cobertura
+
+Escolhe adicional grátis
+
+Pode marcar adicional pago
+
+Adiciona ao carrinho
+
+Exemplo:
+
+Copo 500ml
+
+5 sabores
+
+1 cobertura
+
+1 adicional grátis
+
+1 adicional pago
+
+Já implementado:
+
+Sim
+
+Falta melhorar:
+
+Salvar todos os sabores escolhidos no histórico completo
+
+Salvar também o adicional extra em coluna própria
+
+Exibir resumo mais detalhado antes de adicionar
+
+Impedir combinações inválidas com regras mais claras
+
+1.3 Carrinho de Venda
+
+Descrição:
+O sistema deve manter os itens da venda em sessão antes da finalização.
+
+Como funciona hoje:
+
+Adiciona produto ou sorvete
+
+Mostra item, preço, quantidade e total
+
+Permite remover item
+
+Permite atualizar quantidade de produtos simples
+
+Exemplo:
+
+1 cascão
+
+2 refrigerantes
+
+Subtotal geral calculado
+
+Já implementado:
+
+Sim
+
+Falta melhorar:
+
+Editar item de sorvete já adicionado
+
+Duplicar item
+
+Limpar carrinho com 1 clique
+
+Ordem visual melhor para operação rápida
+
+1.4 Finalização da Venda
+
+Descrição:
+O sistema deve concluir a venda e registrar no banco.
+
+Como funciona hoje:
+
+Calcula subtotal
+
+Aplica desconto manual
+
+Calcula total
+
+Aceita pagamento em:
+
+Dinheiro
+
+Pix
+
+Cartão
+
+Fiado
+
+Calcula troco em dinheiro
+
+Salva observações
+
+Baixa estoque
+
+Grava venda e itens
+
+Exemplo:
+
+Subtotal: R$ 30,00
+
+Desconto: R$ 2,00
+
+Total: R$ 28,00
+
+Pagamento em dinheiro: R$ 30,00
+
+Troco: R$ 2,00
+
+Já implementado:
+
+Sim
+
+Falta melhorar:
+
+Acréscimo manual
+
+Múltiplas formas de pagamento na mesma venda
+
+Emissão de comprovante
+
+Impressão térmica
+
+Número/código de venda amigável
+
+1.5 Venda Fiado
+
+Descrição:
+O sistema deve permitir finalizar venda em fiado vinculando a um cliente.
+
+Como funciona hoje:
+
+Seleciona pagamento “fiado”
+
+Exige nome do cliente
+
+Cria cliente se não existir
+
+Salva conta em fiados
+
+Salva itens em fiado_itens
+
+Saldo fica em aberto
+
+Exemplo:
+
+Cliente: Eder
+
+Total: R$ 22,00
+
+Saldo em aberto: R$ 22,00
+
+Já implementado:
+
+Sim
+
+Falta melhorar:
+
+Busca automática de cliente
+
+Selecionar cliente por lista
+
+Impedir nomes duplicados por erro de digitação
+
+Mostrar histórico do cliente no caixa antes de vender fiado
+
+2. Controle de Estoque
+2.1 Estoque de Produtos Comuns
+
+Descrição:
+O sistema controla estoque de produtos físicos na tabela produtos.
+
+Exemplo:
+
+Coca-Cola 2L
+
+Água
+
+Picolé
+
+Leite
+
+Canudo
+
+Copos
+
+Embalagens
+
+Já implementado:
+
+Sim
+
+2.2 Ajuste de Estoque de Produtos
+
+Descrição:
+Permite entrada e saída manual de estoque.
+
+Tipos atuais:
+
+Entrada (reposição)
+
+Saída (perda, brinde, consumo interno, ajuste)
+
+Como funciona hoje:
+
+Escolhe produto
+
+Escolhe tipo
+
+Informa quantidade
+
+Informa motivo
+
+Em entrada informa valor total da nota
+
+Atualiza custo médio
+
+Exemplo:
+
+Entrada de 24 Coca-Cola
+
+Nota de R$ 120,00
+
+Custo unitário calculado
+
+Já implementado:
+
+Sim
+
+Falta melhorar:
+
+Editar movimentação errada
+
+Anexar fornecedor/nota
+
+Filtro por data
+
+Exportação de histórico
+
+2.3 Estoque de Sabores de Sorvete
+
+Descrição:
+Sabores são controlados separadamente em sabores_sorvete, usando estoque_bolas.
+
+Como funciona hoje:
+
+O caixa usa sabores_sorvete
+
+O estoque real fica em bolas
+
+Ajuste manual na tela de estoque
+
+Exemplo:
+
+Morango: 35 bolas
+
+Chocolate: 12 bolas
+
+Já implementado:
+
+Sim
+
+Falta melhorar:
+
+Histórico de movimentação de sabores
+
+Estoque mínimo configurável por sabor
+
+Entrada por produção/lote
+
+Tela própria mais robusta
+
+2.4 Alerta de Estoque Baixo para Produtos
+
+Descrição:
+O sistema avisa quando o produto está abaixo ou igual ao estoque mínimo.
+
+Status:
+
+OK
+
+Estoque baixo
+
+Sem estoque
+
+Já implementado:
+
+Sim
+
+2.5 Alerta de Estoque Baixo para Sabores
+
+Descrição:
+Aviso quando sabor estiver abaixo de 20 bolas.
+
+Regra atual:
+
+0 = sem estoque
+
+Abaixo de 20 = estoque baixo
+
+Onde aparece:
+
+Caixa
+
+Estoque
+
+Produtos
+
+Já implementado:
+
+Sim
+
+Falta melhorar:
+
+Tornar mínimo configurável por sabor
+
+Alerta visual no dashboard
+
+Relatório de sabores críticos
+
+2.6 Baixa Automática de Estoque na Venda
+
+Descrição:
+Ao finalizar venda, o sistema baixa automaticamente o estoque.
+
+Produto simples:
+
+Baixa produtos.estoque
+
+Sorvete:
+
+Baixa sabores_sorvete.estoque_bolas
+
+Baixa cobertura/adicional
+
+Baixa embalagem/base
+
+Baixa leite e canudo no milk-shake
+
+Já implementado:
+
+Sim
+
+Falta melhorar:
+
+Transação completa no banco
+
+Rollback em erro
+
+Conferência final de consistência
+
+2.7 Estorno de Estoque por Cancelamento
+
+Descrição:
+Venda cancelada deve devolver os estoques.
+
+Status atual:
+
+Cancelamento com estorno solicitado
+
+Parcialmente encaminhado
+
+Falta implementar:
+
+Tela/listagem de vendas com botão de cancelar
+
+Motivo de cancelamento
+
+Estorno completo de:
+
+Produtos
+
+Sabores
+
+Coberturas
+
+Adicionais
+
+Leite/canudo
+
+Embalagem
+
+Impedir cancelamento duplicado
+
+3. Produtos
+3.1 Cadastro de Produtos
+
+Campos atuais:
+
+Nome
+
+Categoria
+
+Preço
+
+Preço de custo
+
+Estoque
+
+Estoque mínimo
+
+Já implementado:
+
+Sim
+
+Falta melhorar:
+
+SKU obrigatório
+
+Unidade de medida
+
+Subcategoria
+
+Observações
+
+Fornecedor
+
+3.2 Listagem de Produtos
+
+Filtros atuais:
+
+Categoria
+
+Busca por nome
+
+Falta melhorar:
+
+Paginação
+
+Ordenação
+
+Busca por SKU
+
+Edição rápida na tabela
+
+3.3 Sabores na Tela de Produtos
+
+Definição:
+
+Não misturar fisicamente em produtos
+
+Mostrar na mesma área administrativa
+
+Falta validar:
+
+Testar filtros
+
+Cadastro duplicado
+
+Edição de sabores
+
+3.4 Cadastro de Novos Sabores
+
+Campos:
+
+Nome
+
+Estoque inicial em bolas
+
+Exemplo:
+
+Pistache — 40 bolas
+
+Falta melhorar:
+
+Editar nome
+
+Inativar sabor
+
+Definir estoque mínimo
+
+Observações
+
+4. Fiados
+4.1 Cadastro de Clientes
+
+Campos:
+
+Nome
+
+Telefone
+
+Endereço
+
+Observações
+
+Falta melhorar:
+
+Editar cliente
+
+Inativar cliente
+
+Evitar duplicidade
+
+Busca inteligente
+
+4.2 Listagem de Clientes com Saldo
+
+Já implementado
+
+4.3 Detalhamento de Contas Fiado
+
+Mostra:
+
+Contas
+
+Itens
+
+Pagamentos
+
+Saldo restante
+
+Observações
+
+4.4 Pagamento Parcial
+
+Permite:
+
+Registrar abatimentos
+
+Atualizar saldo
+
+Marcar como pago ao zerar
+
+Falta melhorar:
+
+Impedir pagamento acima do saldo
+
+Comprovante de pagamento
+
+Estorno de pagamento
+
+Relatório por período
+
+4.5 PDF da Conta Fiado
+
+Status atual:
+
+PDF via window.print()
+
+Falta melhorar:
+
+Layout profissional
+
+PDF real por biblioteca
+
+Cabeçalho com logo
+
+Resumo financeiro
+
+5. Relatórios
+5.1 Vendas por Período
+
+Filtros:
+
+Dia
+
+Mês
+
+Data inicial/final
+
+5.2 Indicadores
+
+Mostra:
+
+Total do dia
+
+Total da semana
+
+Total do mês
+
+Ticket médio
+
+Total de fiados em aberto
+
+Saldo de fiados
+
+5.3 Vendas por Forma de Pagamento
+
+Já implementado
+
+5.4 Produtos Mais Vendidos
+
+Falta melhorar:
+
+Incluir sorvetes montados
+
+Separar por categoria
+
+Ranking por quantidade e faturamento
+
+5.5 Estoque Crítico
+
+Falta melhorar:
+
+Incluir sabores
+
+Filtros
+
+Exportação
+
+5.6 Detalhamento de Venda
+
+Mostra:
+
+Itens
+
+Pagamento
+
+Desconto
+
+Observações
+
+Falta melhorar:
+
+Detalhar sorvetes
+
+Botão de cancelamento
+
+Impressão de comprovante
+
+6. Dashboard
+6.1 Painel Resumido
+
+Falta validar:
+
+Sabores abaixo de 20
+
+Sabores sem estoque
+
+Total vendido hoje
+
+Metas do mês
+
+Gráfico diário/mensal
+
+7. Regras de Negócio do Sorvete
+7.1 Regras por Tipo
+
+Exemplo:
+
+Waffle = 1 bola
+
+Copo 500ml = 5 bolas
+
+Milk-shake 700ml = 7 bolas + leite + canudo
+
+Falta melhorar:
+
+Mover regras do PHP para banco
+
+Tornar configurável
+
+7.2 Preço por Tipo
+
+Falta melhorar:
+
+Salvar no banco
+
+Editar via painel
+
+7.3 Bola Extra
+
+Já implementado
+
+7.4 Adicional Grátis
+
+Já implementado
+
+7.5 Adicional Pago
+
+Falta melhorar:
+
+Salvar coluna própria em itens_sorvete
+
+Aparecer em estorno
+
+Melhorar relatórios
+
+8. Banco de Dados
+
+Tabelas atuais:
+
+produtos
+
+sabores_sorvete
+
+tipos_sorvete
+
+adicionais
+
+vendas
+
+itens_venda
+
+itens_sorvete
+
+clientes
+
+fiados
+
+fiado_itens
+
+pagamentos_fiado
+
+movimentacoes_estoque
+
+usuarios
+
+metas
+
+9. Pendências do Sistema
+Alta Prioridade
+
+Cancelamento de venda com estorno completo
+
+Histórico completo do sorvete montado
+
+Salvar adicional_extra_id
+
+Histórico de movimentação de sabores
+
+Estoque mínimo configurável para sabores
+
+Dashboard com alerta de sabores baixos
+
+Edição de sabores
+
+Edição de produtos
+
+Listagem de sabores zerados
+
+Transações no fechamento e cancelamento
+
+Média Prioridade
+
+Comprovante de venda
+
+Pesquisa rápida no caixa
+
+Autocomplete de cliente fiado
+
+Filtros melhores nos relatórios
+
+Ranking mais completo de sorvetes
+
+Tela de produção de bolas
+
+Exportação de relatórios
+
+Código de venda amigável
+
+Baixa Prioridade / Evolução
+
+Múltiplas formas de pagamento
+
+Dashboard analítico com gráficos
+
+Cadastro de fornecedor
+
+Nota de compra com anexo
+
+Histórico de alteração de preços
+
+Metas por período
+
+Impressão térmica
+
+Perfis de usuário mais completos
+
+Resumo Executivo
+O sistema já faz bem
+
+PDV de produtos
+
+PDV de sorvetes montados
+
+Carrinho
+
+Desconto e troco
+
+Fiado
+
+Pagamento de fiado
+
+Estoque de produtos
+
+Estoque de sabores
+
+Relatórios básicos
+
+Alertas de estoque
+
+Cadastro de sabores
+
+O que falta para ficar completo
+
+Cancelamento com estorno total
+
+Histórico completo de sorvetes
+
+Movimentação de sabores
+
+Administração mais robusta
+
+Dashboard com alertas
+
+Regras de banco e relatórios mais consistentes

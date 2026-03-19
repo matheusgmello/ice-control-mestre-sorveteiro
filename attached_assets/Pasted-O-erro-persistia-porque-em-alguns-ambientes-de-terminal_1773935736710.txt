@@ -1,0 +1,79 @@
+O erro persistia porque, em alguns ambientes de terminal (como o MINGW64 que você está usando), a função nativa do
+  Node.js (process.loadEnvFile) pode se comportar de forma imprevisível em relação ao diretório de trabalho (CWD) dentro
+  de um monorepo.
+
+  O que eu fiz para resolver:
+   1. Carregamento Ultra-Robusto: Atualizei o arquivo lib/db/src/index.ts para não depender apenas da função nativa do
+      Node.
+   2. Múltiplos Caminhos: O código agora tenta localizar o arquivo .env em três lugares diferentes:
+       * No diretório onde o comando foi digitado.
+       * Dois níveis acima (raiz do monorepo).
+       * Três níveis acima do arquivo de banco de dados (raiz absoluta do projeto).
+   3. Fallback Manual: Adicionei um "leitor manual" que abre o arquivo .env como texto e extrai a DATABASE_URL via
+      código (Regex), caso a função do Node falhe em injetar a variável.
+
+  ---
+
+  Instrução para o Replit AI:
+  Copie e passe esta instrução para o Replit AI para que ele aplique a mesma solução na versão web:
+
+  "O carregamento de variáveis de ambiente está falhando no monorepo. Por favor, substitua o conteúdo de
+  lib/db/src/index.ts por este código mais robusto que inclui busca em múltiplos caminhos e um fallback manual de
+  leitura de arquivo:"
+
+    1 import { drizzle } from "drizzle-orm/node-postgres";
+    2 import pg from "pg";
+    3 import * as schema from "./schema";
+    4 import path from "path";
+    5 import { fileURLToPath } from "url";
+    6 import fs from "fs";
+    7
+    8 // Helper robusto para encontrar e carregar o .env em qualquer ambiente
+    9 const loadEnv = () => {
+   10   if (process.env.DATABASE_URL) return;
+   11
+   12   const __filename = fileURLToPath(import.meta.url);
+   13   const __dirname = path.dirname(__filename);
+   14
+   15   const possiblePaths = [
+   16     path.resolve(process.cwd(), ".env"),
+   17     path.resolve(process.cwd(), "..", "..", ".env"),
+   18     path.resolve(__dirname, "..", "..", "..", ".env"),
+   19   ];
+   20
+   21   for (const envPath of possiblePaths) {
+   22     if (fs.existsSync(envPath)) {
+   23       try {
+   24         if (typeof process.loadEnvFile === 'function') {
+   25           process.loadEnvFile(envPath);
+   26         }
+   27
+   28         // Fallback manual: se após o loadEnvFile a variável ainda não existir (comum em alguns terminais)
+   29         if (!process.env.DATABASE_URL) {
+   30           const content = fs.readFileSync(envPath, 'utf8');
+   31           const matches = content.match(/^DATABASE_URL=(.+)$/m);
+   32           if (matches && matches[1]) {
+   33             process.env.DATABASE_URL = matches[1].trim().replace(/['"]/g, '');
+   34           }
+   35         }
+   36
+   37         if (process.env.DATABASE_URL) return;
+   38       } catch (e) {}
+   39     }
+   40   }
+   41 };
+   42
+   43 loadEnv();
+   44
+   45 const { Pool } = pg;
+   46
+   47 if (!process.env.DATABASE_URL) {
+   48   throw new Error("DATABASE_URL não configurada no arquivo .env da raiz.");
+   49 }
+   50
+   51 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+   52 export const db = drizzle(pool, { schema });
+   53
+   54 export * from "./schema";
+  Resultado: Com isso, tanto a API quanto o Frontend e o comando de sincronização de banco (db:push) funcionarão
+  perfeitamente, pois todos agora sabem exatamente onde buscar as configurações.
