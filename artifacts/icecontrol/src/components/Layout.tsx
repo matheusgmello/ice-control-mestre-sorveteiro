@@ -43,7 +43,7 @@ export function Layout({ children }: LayoutProps) {
       <aside className="w-64 flex-shrink-0 bg-sidebar flex flex-col border-r border-sidebar-border shadow-xl z-10 hidden md:flex">
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
           <img 
-            src={`${import.meta.env.BASE_URL}images/logo.png`} 
+            src={`${import.meta.env.BASE_URL}images/logoC.png`} 
             alt="IceControl Logo" 
             className="h-8 w-8 mr-3 rounded-full"
           />
