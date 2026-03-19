@@ -43,7 +43,7 @@ function useUsuarios() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Erro ao buscar usuários");
-      return res.json() as Promise<{ usuarios: any[]; total: number; limite: number }>;
+      return res.json() as Promise<{ usuarios: any[]; total: number }>;
     },
     enabled: !!token,
   });
@@ -114,7 +114,7 @@ export default function Configuracoes() {
     queryClient.invalidateQueries({ queryKey: ["usuarios"] });
   };
 
-  const podeAdicionarMais = dadosUsuarios ? dadosUsuarios.total < dadosUsuarios.limite : true;
+  const podeAdicionarMais = true;
 
   const [exportando, setExportando] = useState(false);
   const [importando, setImportando] = useState(false);
@@ -237,7 +237,7 @@ export default function Configuracoes() {
                 <Users className="w-5 h-5 mr-2 text-secondary" /> Administradores
               </CardTitle>
               <CardDescription>
-                Gerencie os usuários com acesso ao sistema. Máximo de {dadosUsuarios?.limite ?? 2} administradores.
+                Gerencie os usuários com acesso ao sistema. {dadosUsuarios?.total ?? 0} administrador(es) cadastrado(s).
               </CardDescription>
             </div>
             {podeAdicionarMais && (
@@ -287,11 +287,6 @@ export default function Configuracoes() {
                 </div>
               ))}
             </div>
-          )}
-          {!podeAdicionarMais && (
-            <p className="text-xs text-muted-foreground mt-3">
-              Limite de {dadosUsuarios?.limite} administradores atingido. Remova um para adicionar outro.
-            </p>
           )}
         </CardContent>
       </Card>

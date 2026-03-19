@@ -8,7 +8,6 @@ import { eq } from "drizzle-orm";
 const router = Router();
 
 const JWT_SECRET = process.env["JWT_SECRET"] ?? "icecontrol-secret-2025";
-const MAX_ADMINS = 2;
 
 function signToken(payload: { id: number; email: string; nome: string; role: string }) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
@@ -73,11 +72,6 @@ router.post("/auth/register", async (req, res) => {
     if (!nome || !email || !senha) return res.status(400).json({ error: "Nome, email e senha são obrigatórios" });
     if (senha.length < 6) return res.status(400).json({ error: "Senha deve ter no mínimo 6 caracteres" });
 
-    const todos = await db.select().from(usuariosTable);
-    if (todos.length >= MAX_ADMINS) {
-      return res.status(400).json({ error: `Limite de ${MAX_ADMINS} administradores atingido` });
-    }
-
     const emailNorm = email.toLowerCase().trim();
     const [existente] = await db.select().from(usuariosTable).where(eq(usuariosTable.email, emailNorm));
     if (existente) return res.status(400).json({ error: "Este email já está cadastrado" });
@@ -117,7 +111,7 @@ router.get("/auth/usuarios", async (req, res) => {
     jwt.verify(token, JWT_SECRET);
 
     const usuarios = await db.select({ id: usuariosTable.id, nome: usuariosTable.nome, email: usuariosTable.email, role: usuariosTable.role, ativo: usuariosTable.ativo, createdAt: usuariosTable.createdAt }).from(usuariosTable).orderBy(usuariosTable.createdAt);
-    res.json({ usuarios, total: usuarios.length, limite: MAX_ADMINS });
+    res.json({ usuarios, total: usuarios.length });
   } catch {
     res.status(401).json({ error: "Não autenticado" });
   }
