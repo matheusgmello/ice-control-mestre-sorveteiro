@@ -10,6 +10,23 @@ import { extractUser } from "../middleware/auth";
 
 const router = Router();
 
+const ISO_RE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z?)?$/;
+
+function parseDates<T extends Record<string, any>>(rows: T[]): T[] {
+  return rows.map((row) => {
+    const parsed: any = {};
+    for (const [k, v] of Object.entries(row)) {
+      if (typeof v === "string" && ISO_RE.test(v)) {
+        const d = new Date(v);
+        parsed[k] = isNaN(d.getTime()) ? v : d;
+      } else {
+        parsed[k] = v;
+      }
+    }
+    return parsed as T;
+  });
+}
+
 router.get("/backup/export", async (req, res) => {
   try {
     const user = extractUser(req);
@@ -71,86 +88,85 @@ router.post("/backup/import", async (req, res) => {
     const results: Record<string, number> = {};
 
     await db.transaction(async (tx) => {
-      // Restore in dependency order — clear then insert
-      // Non-FK tables first
+      // ── DELETE em ordem: filhos antes dos pais (respeitar FK) ───────────
+      await tx.delete(pagamentosVendaTable);
+      await tx.delete(itensSorveteSaboresTable);
+      await tx.delete(itensVendaTable);
+      await tx.delete(vendasTable);
+      await tx.delete(pagamentosFiadoTable);
+      await tx.delete(fiadoItensTable);
+      await tx.delete(fiadosTable);
+      await tx.delete(movimentacoesEstoqueTable);
+      await tx.delete(clientesTable);
+      await tx.delete(produtosTable);
+      await tx.delete(adicionaisTable);
+      await tx.delete(saboresSorveteTable);
+      await tx.delete(tiposSorveteTable);
+      await tx.delete(metasTable);
+
+      // ── INSERT em ordem: pais antes dos filhos ───────────────────────────
       if (tabelas.metas?.length) {
-        await tx.delete(metasTable);
-        await tx.insert(metasTable).values(tabelas.metas);
+        await tx.insert(metasTable).values(parseDates(tabelas.metas));
         results.metas = tabelas.metas.length;
       }
 
-      if (tabelas.adicionais?.length) {
-        await tx.delete(adicionaisTable);
-        await tx.insert(adicionaisTable).values(tabelas.adicionais);
-        results.adicionais = tabelas.adicionais.length;
-      }
-
-      if (tabelas.sabores?.length) {
-        await tx.delete(saboresSorveteTable);
-        await tx.insert(saboresSorveteTable).values(tabelas.sabores);
-        results.sabores = tabelas.sabores.length;
-      }
-
       if (tabelas.tipos?.length) {
-        await tx.delete(tiposSorveteTable);
-        await tx.insert(tiposSorveteTable).values(tabelas.tipos);
+        await tx.insert(tiposSorveteTable).values(parseDates(tabelas.tipos));
         results.tipos = tabelas.tipos.length;
       }
 
+      if (tabelas.sabores?.length) {
+        await tx.insert(saboresSorveteTable).values(parseDates(tabelas.sabores));
+        results.sabores = tabelas.sabores.length;
+      }
+
+      if (tabelas.adicionais?.length) {
+        await tx.insert(adicionaisTable).values(parseDates(tabelas.adicionais));
+        results.adicionais = tabelas.adicionais.length;
+      }
+
       if (tabelas.produtos?.length) {
-        await tx.delete(produtosTable);
-        await tx.insert(produtosTable).values(tabelas.produtos);
+        await tx.insert(produtosTable).values(parseDates(tabelas.produtos));
         results.produtos = tabelas.produtos.length;
       }
 
       if (tabelas.clientes?.length) {
-        await tx.delete(clientesTable);
-        await tx.insert(clientesTable).values(tabelas.clientes);
+        await tx.insert(clientesTable).values(parseDates(tabelas.clientes));
         results.clientes = tabelas.clientes.length;
       }
 
       if (tabelas.movimentacoes?.length) {
-        await tx.delete(movimentacoesEstoqueTable);
-        await tx.insert(movimentacoesEstoqueTable).values(tabelas.movimentacoes);
+        await tx.insert(movimentacoesEstoqueTable).values(parseDates(tabelas.movimentacoes));
         results.movimentacoes = tabelas.movimentacoes.length;
       }
 
-      // Vendas and dependents
       if (tabelas.vendas?.length) {
-        await tx.delete(pagamentosVendaTable);
-        await tx.delete(itensSorveteSaboresTable);
-        await tx.delete(itensVendaTable);
-        await tx.delete(vendasTable);
-        await tx.insert(vendasTable).values(tabelas.vendas);
+        await tx.insert(vendasTable).values(parseDates(tabelas.vendas));
         results.vendas = tabelas.vendas.length;
       }
       if (tabelas.itensVenda?.length) {
-        await tx.insert(itensVendaTable).values(tabelas.itensVenda);
+        await tx.insert(itensVendaTable).values(parseDates(tabelas.itensVenda));
         results.itensVenda = tabelas.itensVenda.length;
       }
       if (tabelas.itensSabores?.length) {
-        await tx.insert(itensSorveteSaboresTable).values(tabelas.itensSabores);
+        await tx.insert(itensSorveteSaboresTable).values(parseDates(tabelas.itensSabores));
         results.itensSabores = tabelas.itensSabores.length;
       }
       if (tabelas.pagamentosVenda?.length) {
-        await tx.insert(pagamentosVendaTable).values(tabelas.pagamentosVenda);
+        await tx.insert(pagamentosVendaTable).values(parseDates(tabelas.pagamentosVenda));
         results.pagamentosVenda = tabelas.pagamentosVenda.length;
       }
 
-      // Fiados and dependents
       if (tabelas.fiados?.length) {
-        await tx.delete(pagamentosFiadoTable);
-        await tx.delete(fiadoItensTable);
-        await tx.delete(fiadosTable);
-        await tx.insert(fiadosTable).values(tabelas.fiados);
+        await tx.insert(fiadosTable).values(parseDates(tabelas.fiados));
         results.fiados = tabelas.fiados.length;
       }
       if (tabelas.fiadoItens?.length) {
-        await tx.insert(fiadoItensTable).values(tabelas.fiadoItens);
+        await tx.insert(fiadoItensTable).values(parseDates(tabelas.fiadoItens));
         results.fiadoItens = tabelas.fiadoItens.length;
       }
       if (tabelas.pagamentosFiado?.length) {
-        await tx.insert(pagamentosFiadoTable).values(tabelas.pagamentosFiado);
+        await tx.insert(pagamentosFiadoTable).values(parseDates(tabelas.pagamentosFiado));
         results.pagamentosFiado = tabelas.pagamentosFiado.length;
       }
 
