@@ -170,19 +170,22 @@ router.post("/backup/import", async (req, res) => {
         results.pagamentosFiado = tabelas.pagamentosFiado.length;
       }
 
-      // Sync sequences usando pg_get_serial_sequence (mais robusto que nomes hardcoded)
-      const seqTables = [
-        "vendas", "pagamentos_venda", "itens_venda", "itens_sorvete_sabores",
-        "clientes", "produtos", "movimentacoes_estoque", "fiados", "fiado_itens",
-        "pagamentos_fiado", "metas", "tipos_sorvete", "sabores_sorvete",
-        "adicionais", "usuarios",
+      // Sync sequences so new inserts don't conflict with restored IDs
+      const tables = [
+        { name: "produtos", seq: "produtos_id_seq" },
+        { name: "sabores_sorvete", seq: "sabores_sorvete_id_seq" },
+        { name: "tipos_sorvete", seq: "tipos_sorvete_id_seq" },
+        { name: "adicionais", seq: "adicionais_id_seq" },
+        { name: "clientes", seq: "clientes_id_seq" },
+        { name: "vendas", seq: "vendas_id_seq" },
+        { name: "itens_venda", seq: "itens_venda_id_seq" },
+        { name: "fiados", seq: "fiados_id_seq" },
+        { name: "metas", seq: "metas_id_seq" },
       ];
-      for (const t of seqTables) {
+      for (const t of tables) {
         try {
-          await tx.execute(
-            `SELECT setval(pg_get_serial_sequence('${t}', 'id'), COALESCE((SELECT MAX(id) FROM "${t}"), 0) + 1, false)` as any
-          );
-        } catch { /* tabela sem sequência — ignorar */ }
+          await tx.execute(`SELECT setval('${t.seq}', COALESCE((SELECT MAX(id) FROM ${t.name}), 1))` as any);
+        } catch { /* ignore if seq doesn't exist */ }
       }
     });
 

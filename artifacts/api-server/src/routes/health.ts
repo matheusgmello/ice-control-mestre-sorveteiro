@@ -19,19 +19,17 @@ router.get("/fix-sequences", async (_req, res) => {
       "pagamentos_venda",
       "clientes",
       "produtos",
-      "movimentacoes_estoque",
+      "estoque",
       "fiados",
-      "fiado_itens",
-      "pagamentos_fiado",
       "metas",
       "tipos_sorvete",
-      "sabores_sorvete",
-      "adicionais",
+      "sabores",
       "usuarios"
     ];
 
     const results = [];
     for (const table of tables) {
+      // Tenta resetar a sequence para o valor máximo do ID + 1
       try {
         await db.execute(sql`
           SELECT setval(

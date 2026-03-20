@@ -1,25 +1,20 @@
 import { defineConfig } from "drizzle-kit";
 import path from "path";
 
-// Carrega o .env da raiz do projeto (compatível com local e Replit)
+// Carrega o .env da raiz do projeto (dois níveis acima do lib/db)
 try {
   // @ts-ignore
   process.loadEnvFile?.(path.resolve(process.cwd(), "../../.env"));
-} catch (e) {}
-// Fallback: tenta o diretório atual (quando chamado da raiz)
-try {
-  // @ts-ignore
-  process.loadEnvFile?.();
-} catch (e) {}
+} catch (e) {
+  // Ignora se o arquivo não existir ou o Node não suportar loadEnvFile
+}
 
 if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL não encontrada. No Replit, conecte o banco de dados PostgreSQL nas Secrets. Localmente, configure o arquivo .env na raiz do projeto."
-  );
+  throw new Error("DATABASE_URL, ensure the database is provisioned. Verifique o arquivo .env na raiz do projeto.");
 }
 
 export default defineConfig({
-  schema: path.join(__dirname, "./src/schema/index.ts"),
+  schema: "./src/schema/index.ts",
   dialect: "postgresql",
   dbCredentials: {
     url: process.env.DATABASE_URL,

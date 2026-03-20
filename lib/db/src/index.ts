@@ -5,37 +5,39 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 
-// Helper robusto para encontrar e carregar o .env em qualquer ambiente
+// Helper para encontrar e carregar o .env
 const loadEnv = () => {
   if (process.env.DATABASE_URL) return;
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-
+  
+  // Lista de possíveis locais para o .env
   const possiblePaths = [
     path.resolve(process.cwd(), ".env"),
     path.resolve(process.cwd(), "..", "..", ".env"),
-    path.resolve(__dirname, "..", "..", "..", ".env"),
+    path.resolve(__dirname, "..", "..", "..", ".env"), // Raiz a partir de lib/db/src
   ];
 
   for (const envPath of possiblePaths) {
     if (fs.existsSync(envPath)) {
       try {
-        if (typeof process.loadEnvFile === "function") {
+        // Tenta usar a função nativa do Node
+        if (typeof process.loadEnvFile === 'function') {
           process.loadEnvFile(envPath);
-        }
-
-        // Fallback manual: leitura direta do arquivo se loadEnvFile não injetar a variável
-        if (!process.env.DATABASE_URL) {
-          const content = fs.readFileSync(envPath, "utf8");
+        } else {
+          // Fallback: parsing manual se loadEnvFile não estiver disponível ou falhar
+          const content = fs.readFileSync(envPath, 'utf8');
           const matches = content.match(/^DATABASE_URL=(.+)$/m);
           if (matches && matches[1]) {
-            process.env.DATABASE_URL = matches[1].trim().replace(/['"]/g, "");
+            process.env.DATABASE_URL = matches[1].trim();
           }
         }
 
         if (process.env.DATABASE_URL) return;
-      } catch (e) {}
+      } catch (e) {
+        // Ignora erro
+      }
     }
   }
 };
@@ -46,7 +48,7 @@ const { Pool } = pg;
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
-    "DATABASE_URL não configurada. No Replit, conecte o banco PostgreSQL nas Secrets. Localmente, configure o arquivo .env na raiz do projeto."
+    "DATABASE_URL must be set. Verifique se o arquivo .env existe na raiz do projeto e contém a variável DATABASE_URL.",
   );
 }
 
