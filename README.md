@@ -1,4 +1,4 @@
- ![Preview do site](img\preview.png)    
+![Preview Project Image](img/preview.png)
 # IceControl (Mestre Sorveteiro) 🍦
 
 O **IceControl** é um sistema moderno e completo de gestão, desenvolvido especialmente para atender às necessidades de sorveterias. A solução integra funcionalidades essenciais como controle de vendas (PDV), gestão detalhada de estoque, administração de clientes — incluindo contas de fiado — e geração de relatórios estratégicos para apoio na tomada de decisões.
