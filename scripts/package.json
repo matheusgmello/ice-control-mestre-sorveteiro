@@ -7,7 +7,8 @@
     "hello": "tsx ./src/hello.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "maintenance:reset-estoque": "tsx ./src/maintenance/reset-estoque.ts",
-    "maintenance:reset-usuarios": "tsx ./src/maintenance/reset-usuarios.ts"
+    "maintenance:reset-usuarios": "tsx ./src/maintenance/reset-usuarios.ts",
+    "test-sales": "tsx ./test-sales-api.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
