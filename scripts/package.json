@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "maintenance:reset-estoque": "tsx ./src/maintenance/reset-estoque.ts",
+    "maintenance:reset-usuarios": "tsx ./src/maintenance/reset-usuarios.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
